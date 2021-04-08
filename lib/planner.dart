@@ -75,7 +75,7 @@ int scoreForPlayer(Player player) {
 
 class RandomPlanner implements Planner {
   int? seed;
-  Random _random;
+  final Random _random;
   RandomPlanner({this.seed}) : _random = Random(seed);
   // Evaluating board states?
   // Clank tokens

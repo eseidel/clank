@@ -17,5 +17,5 @@ class Simulator {
 void main() async {
   Simulator simulator = Simulator();
   await simulator.run();
-  print("Game complete!");
+  print('Game complete!');
 }

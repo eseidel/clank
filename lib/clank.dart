@@ -34,7 +34,7 @@ class ClankGame {
   late Player activePlayer;
   late Board board;
   int? seed;
-  Random _random;
+  final Random _random;
   bool isComplete = false;
   ClankGame({required List<Planner> playerConnections, this.seed})
       : players = playerConnections
@@ -66,7 +66,7 @@ class ClankGame {
       Player player = turn.player;
       player.token.moveTo(edge.end);
       // TODO: Other move-entry effects (like crystal cave).
-      print("MoveTo: ${edge.end}");
+      print('MoveTo: ${edge.end}');
       if (action.takeItem) {
         // What do we do when takeItem is a lie (there are no tokens)?
         player.takeLoot(player.location.loot.first);
@@ -156,17 +156,17 @@ class Board {
   List<Card> dungeonDiscard = [];
   List<Card> dungeonRow = [];
 
-  Board() {}
+  Board();
 }
 
 class Deck {
-  // First is the "top" of the pile (next to draw).
+  // First is the 'top' of the pile (next to draw).
   List<Card> drawPile = <Card>[];
   // First is first drawn.
   List<Card> hand = <Card>[];
   // First is first played.
   List<Card> playArea = <Card>[];
-  // last is the "top" (most recently discarded), but order doesn't matter.
+  // last is the 'top' (most recently discarded), but order doesn't matter.
   late List<Card> discardPile;
 
   Deck({List<Card>? cards}) {
@@ -180,7 +180,9 @@ class Deck {
   }
 
   void addAll(Iterable<Card> cards) {
-    for (var card in cards) discardPile.add(card);
+    for (var card in cards) {
+      discardPile.add(card);
+    }
   }
 
   void playCard(Card card) {
@@ -193,7 +195,7 @@ class Deck {
 
   // void discard(Card card) {
   //   if (!hand.contains(card)) {
-  //     throw ArgumentError("Hand does not contain $card. Can't discard it.");
+  //     throw ArgumentError('Hand does not contain $card. Can't discard it.');
   //   }
   //   hand.remove(card);
   //   discardPile.add(card);
@@ -227,7 +229,7 @@ class Card {
 
   // You don't want to construct this const (you'll end up sharing instances)
   Card({
-    this.name = "",
+    this.name = '',
     this.skill = 0,
     this.boots = 0,
     this.swords = 0,
@@ -254,13 +256,13 @@ class Artifact {
   }
 
   static List<Artifact> all = [
-    const Artifact._("Ring", 5),
-    const Artifact._("Ankh", 7),
-    const Artifact._("Vase", 10),
-    const Artifact._("Bananas", 15),
-    const Artifact._("Shield", 20),
-    const Artifact._("Chestplate", 25),
-    const Artifact._("Thurible", 30),
+    const Artifact._('Ring', 5),
+    const Artifact._('Ankh', 7),
+    const Artifact._('Vase', 10),
+    const Artifact._('Bananas', 15),
+    const Artifact._('Shield', 20),
+    const Artifact._('Chestplate', 25),
+    const Artifact._('Thurible', 30),
   ];
 }
 

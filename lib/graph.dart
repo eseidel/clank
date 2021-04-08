@@ -77,10 +77,11 @@ class Space {
     this.isCrystalCave = false,
     this.isMarket = false,
     this.expectedArtifactValue = -1,
-  }) : name = '${row}x${column}';
+  }) : name = '${row}x$column';
 
   Iterable<Token> get loot => tokens.where((token) => !(token is PlayerToken));
 
+  @override
   String toString() => '[$name]';
 }
 
