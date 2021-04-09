@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:clank/clank.dart';
+import 'package:clank/planner.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -20,5 +21,11 @@ void main() {
     expect(deck.hand.length, 5);
     expect(deck.discardPile.length, 0);
     expect(deck.drawPile.length, 1);
+  });
+
+  test('initial deal', () {
+    var game = ClankGame(planners: [MockPlanner()]);
+    expect(game.players.length, 1);
+    expect(game.players.first.deck.cardCount, 10);
   });
 }

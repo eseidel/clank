@@ -44,8 +44,9 @@ class ClankGame {
   int? seed;
   final Random _random;
   bool isComplete = false;
-  ClankGame({required List<Planner> playerConnections, this.seed})
-      : players = playerConnections
+
+  ClankGame({required List<Planner> planners, this.seed})
+      : players = planners
             .map((connection) =>
                 Player(planner: connection, deck: createStarterDeck()))
             .toList(),

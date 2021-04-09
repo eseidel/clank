@@ -1,5 +1,6 @@
 // This shouldn't really import clank.dart since this likely ends up as a
 // client-side file where as clank.dart will be server side?
+import 'dart:collection';
 import 'dart:math';
 
 import 'clank.dart';
@@ -77,6 +78,20 @@ int scoreForPlayer(Player player) {
 // Boots
 // Swords
 // Keys?
+
+class MockPlanner implements Planner {
+  Queue<Action> _actions;
+  MockPlanner({List<Action> actions = const []})
+      : _actions = Queue.from(actions);
+
+  @override
+  Future<Action> nextAction(Turn turn) async {
+    if (_actions.isEmpty) {
+      return EndTurn();
+    }
+    return _actions.removeFirst();
+  }
+}
 
 class RandomPlanner implements Planner {
   int? seed;
