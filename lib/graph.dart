@@ -5,6 +5,7 @@ class Edge {
   final int swordsCost;
   final bool requiresKey;
   final bool requiresTeleporter; // Wrong way on a one-way.
+  final bool requiresArtifact; // To get back to the start square.
 
   Edge({
     required this.start,
@@ -13,7 +14,10 @@ class Edge {
     this.swordsCost = 0,
     this.requiresKey = false,
     this.requiresTeleporter = false,
-  });
+    this.requiresArtifact = false,
+  }) {
+    assert(start != end);
+  }
 
   // Should this be infinite for requiresTeleporter paths?
   int get bootsCost => 1 + extraBootsCost;
@@ -119,6 +123,18 @@ class GraphBuilder {
     ));
     return to; // Mostly for authoring convience.
   }
+
+  void connectStart(Space start, Space to) {
+    start.edges.add(Edge(
+      start: start,
+      end: to,
+    ));
+    to.edges.add(Edge(
+      start: to,
+      end: start,
+      requiresArtifact: true,
+    ));
+  }
 }
 
 class FrontGraphBuilder extends GraphBuilder {
@@ -184,8 +200,7 @@ class FrontGraphBuilder extends GraphBuilder {
   Graph build() {
     var start = Space(name: 'start');
     var first = buildFirstRow();
-    // TODO: Traversing back to start requires an artifact.
-    connect(start, first[0]);
+    connectStart(start, first[0]);
     var second = buildSecondRow();
     connect(second[0], first[1], extraBoots: 1, oneway: true);
     connect(first[1], second[1]);

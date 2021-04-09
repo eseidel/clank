@@ -57,6 +57,11 @@ class Turn {
   }
   // Player, starting location, other state?
   // Current resources
+
+  @override
+  String toString() {
+    return '${skill}sk ${boots}b ${swords}sw ${clank}c';
+  }
 }
 
 int scoreForPlayer(Player player) {
@@ -90,13 +95,15 @@ class RandomPlanner implements Planner {
 
   List<Edge> affordableEdges(Turn turn) {
     bool haveResourcesFor(Edge edge) {
+      if (edge.requiresArtifact && !turn.player.hasArtifact) return false;
       if (turn.usingTeleporter) return true;
       if (edge.requiresKey && !turn.hasKey) return false;
-      if (edge.bootsCost < turn.boots) return false;
-      if (edge.swordsCost < turn.swords) return false;
+      if (edge.bootsCost > turn.boots) return false;
+      if (edge.swordsCost > turn.swords) return false;
       return true;
     }
 
+    // TODO: This does not consider spending health instead of swords.
     Space current = turn.player.token.location!;
     return current.edges.where(haveResourcesFor).toList();
   }

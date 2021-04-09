@@ -27,6 +27,14 @@ class Player {
     token.removeFromBoard();
     loot.add(token);
   }
+
+  bool get hasArtifact => loot.any((token) => token is ArtifactToken);
+
+  void updateStatus(Space goal) {
+    if (location == goal && hasArtifact) {
+      status = PlayerStatus.escaped;
+    }
+  }
 }
 
 class ClankGame {
@@ -52,6 +60,27 @@ class ClankGame {
     return players[index + 1];
   }
 
+  void executeTraverse(Turn turn, Traverse action) {
+    Edge edge = action.edge;
+    turn.boots -= edge.bootsCost;
+    assert(turn.boots >= 0);
+    // TODO: This does not consider spending health instead of swords.
+    turn.swords -= edge.swordsCost;
+    assert(turn.swords >= 0);
+
+    Player player = turn.player;
+    player.token.moveTo(edge.end);
+    // TODO: Other move-entry effects (like crystal cave).
+    //print('MoveTo: ${edge.end}');
+    if (action.takeItem) {
+      // What do we do when takeItem is a lie (there are no tokens)?
+      var loot = player.location.loot.first;
+      print('Take loot: $loot');
+      player.takeLoot(loot);
+    }
+    // TODO: handle keys, exhaustion, etc.
+  }
+
   void executeAction(Turn turn, Action action) {
     if (action is PlayCard) {
       turn.playCardIgnoringEffects(action.card);
@@ -61,17 +90,7 @@ class ClankGame {
       return;
     }
     if (action is Traverse) {
-      Edge edge = action.edge;
-      turn.boots -= edge.bootsCost;
-      Player player = turn.player;
-      player.token.moveTo(edge.end);
-      // TODO: Other move-entry effects (like crystal cave).
-      print('MoveTo: ${edge.end}');
-      if (action.takeItem) {
-        // What do we do when takeItem is a lie (there are no tokens)?
-        player.takeLoot(player.location.loot.first);
-      }
-      // TODO: handle keys, exhaustion, etc.
+      executeTraverse(turn, action);
       return;
     }
     assert(false);
@@ -95,15 +114,17 @@ class ClankGame {
       action = await activePlayer.planner.nextAction(turn);
       // Never trust what comes back from a plan?
       executeAction(turn, action);
+      //print(turn);
     } while (!(action is EndTurn));
     executeEndOfTurn(turn);
+    activePlayer.updateStatus(board.graph.start);
     isComplete = checkForEndOfGame();
     activePlayer = nextPlayer();
   }
 
   bool checkForEndOfGame() {
     // Once all players are out of the dungeon or knocked out the game ends.
-    return players.any((player) => player.status == PlayerStatus.inGame);
+    return !players.any((player) => player.status == PlayerStatus.inGame);
   }
 
   static Deck createStarterDeck() {
@@ -117,11 +138,26 @@ class ClankGame {
   }
 
   void placeLootTokens() {
+    List<Space> spacesWithSpecial(Special special) {
+      return board.graph.allSpaces
+          .where((space) => space.special == special)
+          .toList();
+    }
+
     // TODO: Implement placeLootTokens.
     // Artifacts (excluding randomly based on player count)
-    // Minor Secrets
-    // Major Secrets
-    // Monkey Tokens
+    var artifactSpaces = spacesWithSpecial(Special.artifact);
+    for (var space in artifactSpaces) {
+      var artifact = Artifact.byValue(space.expectedArtifactValue);
+      var token = ArtifactToken(artifact);
+      token.moveTo(space);
+    }
+    // // Minor Secrets
+    // var minorSecretSpaces = spacesWithSpecial(Special.minorSecret);
+    // // Major Secrets
+    // var majorSecretSpaces = spacesWithSpecial(Special.majorSecret);
+    // // Monkey Tokens
+    // var monkeyTokenSpaces = spacesWithSpecial(Special.monkeyShrine);
   }
 
   void setup() {
@@ -142,6 +178,51 @@ class ClankGame {
   }
 }
 
+enum MinorSecret {
+  potionOfHealing,
+  potionOfSwiftness,
+  potionOfStrength,
+  skillBoost,
+  treasure,
+  magicSpring,
+  dragonEgg,
+}
+
+enum MajorSecret {
+  potionOfGreaterHealing,
+  greaterSkillBoost,
+  greaterTreasure,
+  flashOfBrilliance,
+  challice,
+}
+
+class Box {
+  // 7 Artifacts
+  // 11 major secrets
+  // - 3 challice (7 pts)
+  // - 2 2x heart bottles
+  // - 2 5 gold
+  // - 2 5 skill
+  // - 2 flash of brilliance (draw 3)
+  // 18 minor secrets
+  // - 3 dragon egg (3 points)
+  // - 3 heal 1
+  // - 3 2 gold
+  // - 3 2 skill
+  // - 2 2 swords
+  // - 2 trash card (at end of turn)
+  // - 2 1 boot
+  // 2 master keys
+  // 2 backpacks
+  // 3 crowns
+  // 3 monkey idols
+  // 4 mastery tokens
+  // Gold (81 total)
+  // Gold is meant to be unlimited: https://boardgamegeek.com/thread/1729908/article/25115604#25115604
+  // - 12 5 gold
+  // - 21 1 gold
+}
+
 // Labels for spaces derived from their visual position computed from the
 // upper-level corner (where the start space is). Start space would be (-1, 0).
 // class Coord {
@@ -155,6 +236,8 @@ class Board {
   List<Card> reserve = [];
   List<Card> dungeonDiscard = [];
   List<Card> dungeonRow = [];
+  List<int> clankArea = [];
+  List<int> dragonBag = [];
 
   Board();
 }
@@ -235,6 +318,9 @@ class Card {
     this.swords = 0,
     this.clank = 0,
   });
+
+  @override
+  String toString() => name;
 }
 
 class Library {
@@ -264,6 +350,11 @@ class Artifact {
     const Artifact._('Chestplate', 25),
     const Artifact._('Thurible', 30),
   ];
+}
+
+class ArtifactToken extends Token {
+  Artifact artifact;
+  ArtifactToken(this.artifact);
 }
 
 // Dungeon Row
