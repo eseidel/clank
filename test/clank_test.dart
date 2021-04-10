@@ -12,9 +12,9 @@ void main() {
     expect(deck.cardCount, 0);
     expect(() => deck.discardPlayAreaAndDrawNewHand(Random(0), 1),
         throwsArgumentError);
-    deck.add(library.make('Burgle'));
+    deck.addAll(library.make('Burgle'));
     expect(deck.cardCount, 1);
-    deck.addAll(library.makeCards('Burgle', 5));
+    deck.addAll(library.make('Burgle', amount: 5));
     expect(deck.cardCount, 6);
     expect(deck.hand.length, 0);
     expect(deck.discardPile.length, 6);

@@ -1,5 +1,7 @@
 import 'dart:math';
 
+import 'package:clank/cards.dart';
+
 import 'graph.dart';
 import 'planner.dart';
 
@@ -172,10 +174,10 @@ class ClankGame {
   static Deck createStarterDeck() {
     var library = Library();
     Deck deck = Deck();
-    deck.addAll(library.makeCards('Burgle', 6));
-    deck.addAll(library.makeCards('Stumble', 2));
-    deck.add(library.make('Sidestep'));
-    deck.add(library.make('Scramble'));
+    deck.addAll(library.make('Burgle'));
+    deck.addAll(library.make('Stumble'));
+    deck.addAll(library.make('Sidestep'));
+    deck.addAll(library.make('Scramble'));
     return deck;
   }
 
@@ -232,9 +234,9 @@ class Reserve {
   final List<List<Card>> piles;
   Reserve(Library library)
       : piles = [
-          library.makeCards('Mercenary', 15),
-          library.makeCards('Explore', 15),
-          library.makeCards('Secret Tome', 12),
+          library.make('Mercenary'),
+          library.make('Explore'),
+          library.make('Secret Tome'),
         ] {
     // Goblin
     // Secret Tome
@@ -531,78 +533,15 @@ class Card {
   String toString() => type.name;
 }
 
-class CardType {
-  final String name;
-  final int skill;
-  final int boots;
-  final int swords;
-
-  final int clank;
-  final int points;
-
-  final int skillCost;
-  final int swordsCost;
-
-  const CardType({
-    this.name = '',
-    this.skill = 0,
-    this.boots = 0,
-    this.swords = 0,
-    this.clank = 0,
-    this.skillCost = 0,
-    this.swordsCost = 0,
-    this.points = 0,
-  });
-
-  @override
-  String toString() => name;
-}
-
 class Library {
-  Map cardNameToType = {};
-
-  // Maybe these should be actual templates and then we can talk about the
-  // description of a card (e.g. when planning actions) separately from an
-  // actual instance of a card (used for shuffling, etc.)?
-  void _card({
-    required String name,
-    int skill = 0,
-    int boots = 0,
-    int swords = 0,
-    int clank = 0,
-    int skillCost = 0,
-    int swordsCost = 0,
-    int points = 0,
-  }) {
-    cardNameToType[name] = CardType(
-      name: name,
-      skill: skill,
-      boots: boots,
-      swords: swords,
-      clank: clank,
-      skillCost: skillCost,
-      swordsCost: swordsCost,
-      points: points,
-    );
+  List<Card> make(String name, {int? amount}) {
+    for (var type in baseSetAllCardTypes) {
+      if (type.name == name) {
+        return List.generate(amount ?? type.count, (_) => Card._(type));
+      }
+    }
+    throw ArgumentError('"$name" is not a known card name');
   }
-
-  Library() {
-    // Starter
-    _card(name: 'Burgle', skill: 1);
-    _card(name: 'Scramble', skill: 1, boots: 1);
-    _card(name: 'Sidestep', boots: 1);
-    _card(name: 'Stumble', clank: 1);
-
-    // Reserve
-    _card(name: 'Mercenary', skill: 1, swords: 2, skillCost: 2);
-    _card(name: 'Explore', skill: 2, boots: 1, skillCost: 3);
-    _card(name: 'Secret Tome', points: 7, skillCost: 7);
-  }
-
-  List<Card> makeCards(String name, int ammount) =>
-      List.generate(ammount, (_) => Card._(cardNameToType[name]));
-
-  Card make(String name) => Card._(cardNameToType[name]);
 }
 
 // This could be an enum using one of the enum packages.
