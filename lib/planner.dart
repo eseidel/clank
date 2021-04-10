@@ -8,7 +8,7 @@ import 'graph.dart';
 
 // Responsible for making decisions, asynchronous, not trust-worthy.
 abstract class Planner {
-  Future<Action> nextAction(Turn turn);
+  Future<Action> nextAction(Turn turn, Board board);
 }
 
 class Action {
@@ -31,6 +31,13 @@ class Traverse extends Action {
   final Edge edge;
   bool takeItem;
   Traverse({required this.edge, required this.takeItem});
+}
+
+class Purchase extends Action {
+  final Card card;
+  Purchase({required this.card}) {
+    assert(card.swordsCost > 0 || card.skillCost > 0);
+  }
 }
 
 class EndTurn extends Action {}
@@ -80,12 +87,12 @@ int scoreForPlayer(Player player) {
 // Keys?
 
 class MockPlanner implements Planner {
-  Queue<Action> _actions;
+  final Queue<Action> _actions;
   MockPlanner({List<Action> actions = const []})
       : _actions = Queue.from(actions);
 
   @override
-  Future<Action> nextAction(Turn turn) async {
+  Future<Action> nextAction(Turn turn, Board board) async {
     if (_actions.isEmpty) {
       return EndTurn();
     }
@@ -108,7 +115,7 @@ class RandomPlanner implements Planner {
   // Current expected score = current score + likelyhood of not being zero?
   // Expected Score ==
 
-  List<Edge> affordableEdges(Turn turn) {
+  Iterable<Traverse> possibleMoves(Turn turn) sync* {
     bool haveResourcesFor(Edge edge) {
       if (edge.requiresArtifact && !turn.player.hasArtifact) return false;
       if (turn.usingTeleporter) return true;
@@ -118,24 +125,46 @@ class RandomPlanner implements Planner {
       return true;
     }
 
-    // TODO: This does not consider spending health instead of swords.
     Space current = turn.player.token.location!;
-    return current.edges.where(haveResourcesFor).toList();
+    for (var edge in current.edges) {
+      if (!haveResourcesFor(edge)) {
+        continue;
+      }
+      // TODO: Yield versions which spend hp instead of swords.
+      yield Traverse(edge: edge, takeItem: edge.end.loot.isNotEmpty);
+    }
+  }
+
+  Iterable<Action> possiblePurchases(Turn turn, Board board) sync* {
+    bool canPurchase(Card card) {
+      if (card.swordsCost > turn.swords) return false;
+      if (card.skillCost > turn.skill) return false;
+      return true;
+    }
+
+    // Add from reserve
+    // Add from dungeon row
+    for (var card in board.reserve.availableCards) {
+      if (canPurchase(card)) {
+        yield Purchase(card: card);
+      }
+    }
   }
 
   @override
-  Future<Action> nextAction(Turn turn) async {
+  Future<Action> nextAction(Turn turn, Board board) async {
     // If cards in hand, play all those?
     if (turn.hand.isNotEmpty) {
       return PlayCard(turn.hand.first);
     }
-    // Look at all possible moves.  Pick one at random.
-    List<Edge> possibleMoves = affordableEdges(turn);
-    if (possibleMoves.isNotEmpty) {
-      possibleMoves.shuffle(_random);
-      Edge edge = possibleMoves.first;
-      // Does this need to specify which item?
-      return Traverse(edge: edge, takeItem: edge.end.loot.isNotEmpty);
+
+    List<Action> possibleActions = [];
+    possibleActions.addAll(possibleMoves(turn));
+    possibleActions.addAll(possiblePurchases(turn, board));
+
+    if (possibleActions.isNotEmpty) {
+      possibleActions.shuffle(_random);
+      return possibleActions.first;
     }
 
     return EndTurn();

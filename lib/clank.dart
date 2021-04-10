@@ -72,14 +72,28 @@ class ClankGame {
     Player player = turn.player;
     player.token.moveTo(edge.end);
     // TODO: Other move-entry effects (like crystal cave).
-    //print('MoveTo: ${edge.end}');
+    print('MoveTo: ${edge.end}');
     if (action.takeItem) {
       // What do we do when takeItem is a lie (there are no tokens)?
       var loot = player.location.loot.first;
-      print('Take loot: $loot');
+      print('Loot: $loot');
       player.takeLoot(loot);
     }
     // TODO: handle keys, exhaustion, etc.
+  }
+
+  void executePurchase(Turn turn, Purchase action) {
+    Card card = action.card;
+    turn.skill -= card.skillCost;
+    assert(turn.skill >= 0);
+    // Should fighting be handled as a separate action?
+    turn.swords -= card.swordsCost;
+    assert(turn.swords >= 0);
+
+    // This should take a CardType and return a Card.
+    Card purchased = board.reserve.purchaseCard(card);
+    turn.player.deck.add(purchased);
+    print('Buy: $card');
   }
 
   void executeAction(Turn turn, Action action) {
@@ -92,6 +106,10 @@ class ClankGame {
     }
     if (action is Traverse) {
       executeTraverse(turn, action);
+      return;
+    }
+    if (action is Purchase) {
+      executePurchase(turn, action);
       return;
     }
     assert(false);
@@ -112,7 +130,7 @@ class ClankGame {
     // If the player is otherwise off board (dead, out), ignore the turn.
     Action action;
     do {
-      action = await activePlayer.planner.nextAction(turn);
+      action = await activePlayer.planner.nextAction(turn, board);
       // Never trust what comes back from a plan?
       executeAction(turn, action);
       //print(turn);
@@ -131,10 +149,10 @@ class ClankGame {
   static Deck createStarterDeck() {
     var library = Library();
     Deck deck = Deck();
-    deck.addAll(List.generate(6, (_) => library.makeBurgle()));
-    deck.addAll(List.generate(2, (_) => library.makeStumble()));
-    deck.add(library.makeSidestep());
-    deck.add(library.makeScramble());
+    deck.addAll(library.makeCards('Burgle', 6));
+    deck.addAll(library.makeCards('Stumble', 2));
+    deck.add(library.make('Sidestep'));
+    deck.add(library.make('Scramble'));
     return deck;
   }
 
@@ -175,7 +193,39 @@ class ClankGame {
     }
     placeLootTokens();
     // Fill reserve.
+    Library library = Library();
+    board.reserve = Reserve(library);
     // Set Rage level
+  }
+}
+
+class Reserve {
+  final List<List<Card>> piles;
+  Reserve(Library library)
+      : piles = [
+          library.makeCards('Mercenary', 15),
+          library.makeCards('Explore', 15),
+        ] {
+    // Goblin
+    // Secret Tome
+  }
+
+  // Should this be CardType instead of Card?
+  Iterable<Card> get availableCards sync* {
+    for (var pile in piles) {
+      if (pile.isNotEmpty) yield pile.first;
+    }
+  }
+
+  // This should take a CardType and return the actual card.
+  Card purchaseCard(Card card) {
+    for (var pile in piles) {
+      // This could be better by comparing cardType.
+      if (pile.isNotEmpty && pile.contains(card)) {
+        pile.remove(card);
+      }
+    }
+    return card;
   }
 }
 
@@ -232,15 +282,130 @@ class Box {
 //   Coord(this.row, this.column);
 // }
 
+enum PlayerColor {
+  red,
+  yellow,
+  green,
+  blue,
+}
+
+class CubeCounts {
+  final List<int> _playerCubeCounts;
+
+  CubeCounts({int startWith = 0})
+      : _playerCubeCounts = List.filled(PlayerColor.values.length, startWith);
+
+  void addTo(PlayerColor color, [int amount = 1]) {
+    assert(amount >= 0);
+    _playerCubeCounts[color.index] += amount;
+  }
+
+  int takeFrom(PlayerColor color, [int amount = 1]) {
+    assert(amount >= 0);
+    int current = _playerCubeCounts[color.index];
+    int taken = min(current, amount);
+    _playerCubeCounts[color.index] -= taken;
+    assert(_playerCubeCounts[color.index] >= 0);
+    return taken;
+  }
+
+  int countFor(PlayerColor color) => _playerCubeCounts[color.index];
+
+  int get totalCubes =>
+      _playerCubeCounts.fold(0, (previous, count) => previous + count);
+}
+
+class DragonBag extends CubeCounts {
+  int dragonCubesLeft = Board.dragonMaxCubeCount;
+
+  CubeCounts pickCubes(Random random, int count) {
+    int dragonIndex = -1;
+    List<int> cubes = [];
+    for (var color in PlayerColor.values) {
+      cubes.addAll(List.filled(countFor(color), color.index));
+    }
+    cubes.addAll(List.filled(dragonCubesLeft, dragonIndex));
+    cubes.shuffle(random);
+
+    CubeCounts counts = CubeCounts();
+    for (var picked in cubes.take(count)) {
+      if (picked != dragonIndex) {
+        counts.addTo(PlayerColor.values[picked], 1);
+      }
+    }
+    return counts;
+  }
+  // Player cube, give it back to them.
+  // Dragon cube, give it back to the Board/whatever.
+}
+
 class Board {
+  static const int playerMaxHealth = 10;
+  static const int dragonMaxCubeCount = 24;
+  static const int playerMaxCubeCount = 30;
+  static const List<int> rageValues = <int>[2, 2, 3, 3, 4, 4, 5];
+
+  int rageIndex = 0; // TODO: Set according to number of players.
+
   Graph graph = FrontGraphBuilder().build();
-  List<Card> reserve = [];
+  late Reserve reserve;
   List<Card> dungeonDiscard = [];
   List<Card> dungeonRow = [];
-  List<int> clankArea = [];
-  List<int> dragonBag = [];
+
+  // Should these be private?
+  CubeCounts playerCubeStashes = CubeCounts(startWith: playerMaxCubeCount);
+  CubeCounts playerDamageTaken = CubeCounts();
+  CubeCounts clankArea = CubeCounts();
+  DragonBag dragonBag = DragonBag();
 
   Board();
+
+  void increaseDragonRage() {
+    if (rageIndex < rageValues.length - 1) {
+      rageIndex++;
+    }
+  }
+
+  int get dragonRageCubeCount => rageValues[rageIndex];
+
+  int damageTakenByPlayer(PlayerColor color) =>
+      playerDamageTaken.countFor(color);
+
+  int healthForPlayer(PlayerColor color) =>
+      playerMaxHealth - damageTakenByPlayer(color);
+
+  void takeDamage(PlayerColor color, int amount) {
+    playerDamageTaken.addTo(color, amount);
+  }
+
+  void addClank(PlayerColor color, int amount) {
+    int takenCount = playerCubeStashes.takeFrom(color, amount);
+    clankArea.addTo(color, takenCount);
+  }
+
+  void dragonAttack(Random random) {
+    // Take clank from area to bag.
+    for (var color in PlayerColor.values) {
+      dragonBag.addTo(color, clankArea.countFor(color));
+    }
+    clankArea = CubeCounts();
+
+    // Draw # of cubes = to rage number
+    var drawn = dragonBag.pickCubes(random, dragonRageCubeCount);
+    for (var color in PlayerColor.values) {
+      playerDamageTaken.addTo(color, drawn.countFor(color));
+    }
+  }
+
+  void assertTotalClankCubeCounts() {
+    for (var color in PlayerColor.values) {
+      int total = playerCubeStashes.countFor(color);
+      total += playerDamageTaken.countFor(color);
+      total += clankArea.countFor(color);
+      total += dragonBag.countFor(color);
+      assert(total == playerMaxCubeCount);
+    }
+  }
 }
 
 class Deck {
@@ -309,7 +474,12 @@ class Card {
   final int skill;
   final int boots;
   final int swords;
+
   final int clank;
+  final int points;
+
+  final int skillCost;
+  final int swordsCost;
 
   // You don't want to construct this const (you'll end up sharing instances)
   Card({
@@ -318,6 +488,9 @@ class Card {
     this.boots = 0,
     this.swords = 0,
     this.clank = 0,
+    this.skillCost = 0,
+    this.swordsCost = 0,
+    this.points = 0,
   });
 
   @override
@@ -325,11 +498,52 @@ class Card {
 }
 
 class Library {
-  // Starter cards
-  Card makeBurgle() => Card(name: 'Burgle', skill: 1);
-  Card makeScramble() => Card(name: 'Scramble', skill: 1, boots: 1);
-  Card makeSidestep() => Card(name: 'Sidestep', boots: 1);
-  Card makeStumble() => Card(name: 'Stumble', clank: 1);
+  Map cardConstructors = {};
+
+  // Maybe these should be actual templates and then we can talk about the
+  // description of a card (e.g. when planning actions) separately from an
+  // actual instance of a card (used for shuffling, etc.)?
+  void _card({
+    required String name,
+    int skill = 0,
+    int boots = 0,
+    int swords = 0,
+    int clank = 0,
+    int skillCost = 0,
+    int swordsCost = 0,
+    int points = 0,
+  }) {
+    cardConstructors[name] = () => Card(
+          name: name,
+          skill: skill,
+          boots: boots,
+          swords: swords,
+          clank: clank,
+          skillCost: skillCost,
+          swordsCost: swordsCost,
+          points: points,
+        );
+  }
+
+  Library() {
+    // Starter
+    _card(name: 'Burgle', skill: 1);
+    _card(name: 'Scramble', skill: 1, boots: 1);
+    _card(name: 'Sidestep', boots: 1);
+    _card(name: 'Stumble', clank: 1);
+
+    // Reserve
+    _card(name: 'Mercenary', skill: 1, swords: 2, skillCost: 2);
+    _card(name: 'Explore', skill: 2, boots: 1, skillCost: 3);
+    _card(name: 'Secret Tome', points: 7, skillCost: 7);
+  }
+
+  List<Card> makeCards(String name, int ammount) {
+    var constructor = cardConstructors[name];
+    return List.generate(ammount, (index) => constructor());
+  }
+
+  Card make(String name) => cardConstructors[name]();
 }
 
 // This could be an enum using one of the enum packages.
@@ -341,6 +555,9 @@ class Artifact {
   factory Artifact.byValue(int desiredValue) {
     return all.firstWhere((artifact) => artifact.value == desiredValue);
   }
+
+  @override
+  String toString() => '$value:$name';
 
   static List<Artifact> all = [
     const Artifact._('Ring', 5),
@@ -356,6 +573,9 @@ class Artifact {
 class ArtifactToken extends Token {
   Artifact artifact;
   ArtifactToken(this.artifact);
+
+  @override
+  String toString() => artifact.toString();
 }
 
 // Dungeon Row

@@ -28,4 +28,13 @@ void main() {
     expect(game.players.length, 1);
     expect(game.players.first.deck.cardCount, 10);
   });
+
+  test('clank damage cubes', () {
+    var board = Board();
+    expect(board.damageTakenByPlayer(PlayerColor.blue), 0);
+    expect(board.healthForPlayer(PlayerColor.blue), 10);
+    board.takeDamage(PlayerColor.blue, 2);
+    expect(board.damageTakenByPlayer(PlayerColor.blue), 2);
+    expect(board.healthForPlayer(PlayerColor.blue), 8);
+  });
 }

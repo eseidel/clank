@@ -10,5 +10,15 @@ https://www.direwolfdigital.com/clank/
 dart run bin/simulate.dart
 ```
 
+## Missing Features
+* Dungeon Row
+* Dragon Attacks
+* Crystal Cave support
+* all non-reserve cards.
+* Market
+* End Game "Countdown Track"
+* Healing
+* Various card effects (trashing, teleport, etc.)
+
 ## Issues
-* Intermittent immediate game completions (maybe missing an await?)
+* Able to pick up multiple artifacts.
