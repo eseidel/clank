@@ -49,7 +49,7 @@ class Turn {
   int skill = 0;
   int boots = 0;
   int swords = 0;
-  int clank = 0;
+  int leftoverClankReduction = 0;
   Turn({required this.player});
 
   List<Card> get hand => player.deck.hand;
@@ -62,14 +62,13 @@ class Turn {
     skill += card.skill;
     boots += card.boots;
     swords += card.swords;
-    clank += card.clank;
   }
   // Player, starting location, other state?
   // Current resources
 
   @override
   String toString() {
-    return '${skill}sk ${boots}b ${swords}sw ${clank}c';
+    return '${skill}sk ${boots}b ${swords}sw -${leftoverClankReduction}c';
   }
 }
 

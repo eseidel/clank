@@ -144,6 +144,13 @@ const List<CardType> baseSetAllCardTypes = [
       swords: 1,
       boots: 1,
       skillCost: 1),
+  CardType(
+      name: 'Move Silently',
+      set: CardSet.dungeon,
+      count: 2,
+      boots: 2,
+      clank: -2,
+      skillCost: 3),
 
   // Unique Cards
   CardType(

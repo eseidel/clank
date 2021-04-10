@@ -139,10 +139,19 @@ class ClankGame {
     print('${turn.player} buys $card');
   }
 
+  void executeCardClank(Turn turn, CardType card) {
+    int actualAdjustment = board.adjustClank(activePlayer.color, card.clank);
+    if (actualAdjustment != card.clank) {
+      assert(actualAdjustment.isNegative ||
+          board.playerCubeStashes.countFor(turn.player.color) == 0);
+      turn.leftoverClankReduction += actualAdjustment - card.clank;
+    }
+  }
+
   void executeAction(Turn turn, Action action) {
     if (action is PlayCard) {
       turn.playCardIgnoringEffects(action.card);
-      // TODO: Handle card effects!
+      executeCardClank(turn, action.card.type);
       return;
     }
     if (action is EndTurn) {
@@ -507,9 +516,16 @@ class Board {
     playerDamageTaken.addTo(color, amount);
   }
 
-  void addClank(PlayerColor color, int amount) {
-    int takenCount = playerCubeStashes.takeFrom(color, amount);
-    clankArea.addTo(color, takenCount);
+  int adjustClank(PlayerColor color, int amount) {
+    assert(amount != 0);
+    if (amount > 0) {
+      int takenCount = playerCubeStashes.takeFrom(color, amount);
+      clankArea.addTo(color, takenCount);
+      return takenCount;
+    }
+    int takenCount = clankArea.takeFrom(color, amount.abs());
+    playerCubeStashes.addTo(color, takenCount);
+    return takenCount * -1;
   }
 
   int cubeCountForNormalDragonAttack() {
@@ -649,22 +665,15 @@ class Card {
 }
 
 class Library {
-  List<Card> make(String name, int amount) {
-    for (var type in baseSetAllCardTypes) {
-      if (type.name == name) {
-        return List.generate(amount, (_) => Card._(type));
-      }
-    }
-    throw ArgumentError('"$name" is not a known card name');
-  }
+  CardType cardTypeByName(String name) =>
+      baseSetAllCardTypes.firstWhere((type) => type.name == name);
+
+  List<Card> make(String name, int amount) =>
+      List.generate(amount, (_) => Card._(cardTypeByName(name)));
 
   List<Card> makeAll(String name) {
-    for (var type in baseSetAllCardTypes) {
-      if (type.name == name) {
-        return List.generate(type.count, (_) => Card._(type));
-      }
-    }
-    throw ArgumentError('"$name" is not a known card name');
+    var type = cardTypeByName(name);
+    return List.generate(type.count, (_) => Card._(type));
   }
 
   Iterable<Card> makeDungeonDeck() {
