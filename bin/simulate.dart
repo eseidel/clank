@@ -1,21 +1,15 @@
 import 'package:clank/planner.dart';
 import 'package:clank/clank.dart';
 
-class Simulator {
-  Future<void> run() async {
-    // MVP
-    // Deal out starting hands.
-    // Have a short graph with one artifact.
-    ClankGame game = ClankGame(planners: [RandomPlanner()]);
-    while (!game.isComplete) {
-      // Should this produce a record of the turn for storing?
-      await game.takeTurn();
-    }
-  }
-}
-
 void main() async {
-  Simulator simulator = Simulator();
-  await simulator.run();
-  print('Game complete!');
+  ClankGame game = ClankGame(planners: [RandomPlanner(), RandomPlanner()]);
+  int turnCount = 0;
+  while (!game.isComplete) {
+    await game.takeTurn();
+    turnCount++;
+  }
+  for (var player in game.players) {
+    print('$player got ${player.calculateTotalPoints()}');
+  }
+  print('Game complete in ($turnCount turns)!');
 }

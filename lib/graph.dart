@@ -45,6 +45,11 @@ class Token {
   }
 }
 
+class LootToken extends Token {
+  int points = 0;
+  LootToken({required this.points});
+}
+
 // Player always has a location, should override getter to be non-nullable.
 class PlayerToken extends Token {}
 

@@ -131,7 +131,10 @@ class RandomPlanner implements Planner {
         continue;
       }
       // TODO: Yield versions which spend hp instead of swords.
-      yield Traverse(edge: edge, takeItem: edge.end.loot.isNotEmpty);
+      bool hasItem = edge.end.loot.isNotEmpty;
+      bool takeItem = hasItem &&
+          (edge.end.special != Special.artifact || turn.player.canTakeArtifact);
+      yield Traverse(edge: edge, takeItem: takeItem);
     }
   }
 
@@ -143,12 +146,12 @@ class RandomPlanner implements Planner {
     }
 
     // Add from reserve
-    // Add from dungeon row
     for (var card in board.reserve.availableCards) {
       if (canPurchase(card)) {
         yield Purchase(card: card);
       }
     }
+    // Add from dungeon row
   }
 
   @override

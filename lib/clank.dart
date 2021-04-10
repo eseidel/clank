@@ -15,14 +15,15 @@ class Player {
   PlayerStatus status = PlayerStatus.inGame;
   Planner planner;
   late PlayerToken token;
+  late PlayerColor color;
 
-  List<Token> loot = [];
+  int gold = 0;
+  List<LootToken> loot = [];
   Player({required this.planner, required this.deck});
 
   Space get location => token.location!;
 
-  void takeLoot(Token token) {
-    assert(!(Token is PlayerToken));
+  void takeLoot(LootToken token) {
     assert(token.location != null);
     token.removeFromBoard();
     loot.add(token);
@@ -30,11 +31,30 @@ class Player {
 
   bool get hasArtifact => loot.any((token) => token is ArtifactToken);
 
+  bool get canTakeArtifact {
+    int artifactCount =
+        loot.fold(0, (sum, token) => (token is ArtifactToken) ? 1 : 0);
+    // Allow more artifacts with backpacks.
+    int maxArtifacts = 1;
+    return artifactCount < maxArtifacts;
+  }
+
   void updateStatus(Space goal) {
     if (location == goal && hasArtifact) {
       status = PlayerStatus.escaped;
     }
   }
+
+  int calculateTotalPoints() {
+    int total = 0;
+    total += deck.calculateTotalPoints();
+    total += loot.fold(0, (sum, loot) => sum + loot.points);
+    total += gold;
+    return total;
+  }
+
+  @override
+  String toString() => '${colorToString(color)}';
 }
 
 class ClankGame {
@@ -72,11 +92,15 @@ class ClankGame {
     Player player = turn.player;
     player.token.moveTo(edge.end);
     // TODO: Other move-entry effects (like crystal cave).
-    print('MoveTo: ${edge.end}');
+    // print('$player moved: ${edge.end}');
     if (action.takeItem) {
+      assert(player.location.loot.isNotEmpty);
       // What do we do when takeItem is a lie (there are no tokens)?
-      var loot = player.location.loot.first;
-      print('Loot: $loot');
+      Token token = player.location.loot.first;
+      assert(token is LootToken);
+      LootToken loot = token as LootToken;
+      assert(!(loot is Artifact) || player.canTakeArtifact);
+      print('$player loots $loot');
       player.takeLoot(loot);
     }
     // TODO: handle keys, exhaustion, etc.
@@ -93,7 +117,7 @@ class ClankGame {
     // This should take a CardType and return a Card.
     Card purchased = board.reserve.purchaseCard(card);
     turn.player.deck.add(purchased);
-    print('Buy: $card');
+    print('${turn.player} buys $card');
   }
 
   void executeAction(Turn turn, Action action) {
@@ -184,6 +208,12 @@ class ClankGame {
     for (var player in players) {
       player.deck.discardPlayAreaAndDrawNewHand(_random);
     }
+    // Hack to assign colors for now.  Planners should choose?
+    for (var color in PlayerColor.values) {
+      if (color.index < players.length) {
+        players[color.index].color = color;
+      }
+    }
     // Build the board graph.
     board = Board();
     // Place all the players at the start.
@@ -205,6 +235,7 @@ class Reserve {
       : piles = [
           library.makeCards('Mercenary', 15),
           library.makeCards('Explore', 15),
+          library.makeCards('Secret Tome', 12),
         ] {
     // Goblin
     // Secret Tome
@@ -287,6 +318,10 @@ enum PlayerColor {
   yellow,
   green,
   blue,
+}
+
+String colorToString(PlayerColor color) {
+  return ['Red', 'Yellow', 'Green', 'Blue'][color.index];
 }
 
 class CubeCounts {
@@ -422,7 +457,16 @@ class Deck {
     discardPile = cards ?? <Card>[];
   }
 
-  int get cardCount => drawPile.length + hand.length + discardPile.length;
+  List<Card> get allCards {
+    List<Card> allCards = [];
+    allCards.addAll(drawPile);
+    allCards.addAll(hand);
+    allCards.addAll(discardPile);
+    allCards.addAll(playArea);
+    return allCards;
+  }
+
+  int get cardCount => allCards.length;
 
   void add(Card card) {
     discardPile.add(card);
@@ -466,6 +510,10 @@ class Deck {
     hand = drawPile.take(count).toList();
     drawPile = drawPile.sublist(count); // take() doens't actually remove.
     return hand;
+  }
+
+  int calculateTotalPoints() {
+    return allCards.fold(0, (sum, card) => sum + card.points);
   }
 }
 
@@ -570,9 +618,9 @@ class Artifact {
   ];
 }
 
-class ArtifactToken extends Token {
+class ArtifactToken extends LootToken {
   Artifact artifact;
-  ArtifactToken(this.artifact);
+  ArtifactToken(this.artifact) : super(points: artifact.value);
 
   @override
   String toString() => artifact.toString();
