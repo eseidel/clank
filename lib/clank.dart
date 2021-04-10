@@ -134,7 +134,7 @@ class ClankGame {
     turn.swords -= cardType.swordsCost;
     assert(turn.swords >= 0);
 
-    Card card = board.reserve.purchaseCard(cardType);
+    Card card = board.purchaseCard(cardType);
     turn.player.deck.add(card);
     print('${turn.player} buys $card');
   }
@@ -232,10 +232,10 @@ class ClankGame {
   static PlayerDeck createStarterDeck() {
     var library = Library();
     PlayerDeck deck = PlayerDeck();
-    deck.addAll(library.make('Burgle'));
-    deck.addAll(library.make('Stumble'));
-    deck.addAll(library.make('Sidestep'));
-    deck.addAll(library.make('Scramble'));
+    deck.addAll(library.make('Burgle', 6));
+    deck.addAll(library.make('Stumble', 2));
+    deck.addAll(library.make('Sidestep', 1));
+    deck.addAll(library.make('Scramble', 1));
     return deck;
   }
 
@@ -295,9 +295,9 @@ class Reserve {
   final List<List<Card>> piles;
   Reserve(Library library)
       : piles = [
-          library.make('Mercenary'),
-          library.make('Explore'),
-          library.make('Secret Tome'),
+          library.makeAll('Mercenary'),
+          library.makeAll('Explore'),
+          library.makeAll('Secret Tome'),
         ] {
     // Goblin
     // Secret Tome
@@ -436,8 +436,9 @@ class DragonBag extends CubeCounts {
 
 extension Pile<T> on List<T> {
   List<T> takeAndRemoveUpTo(int count) {
-    List<T> taken = take(count).toList();
-    removeRange(0, count);
+    int actual = min(count, length);
+    List<T> taken = take(actual).toList();
+    removeRange(0, actual);
     return taken;
   }
 }
@@ -540,6 +541,20 @@ class Board {
       assert(total == playerMaxCubeCount);
     }
   }
+
+  Iterable<CardType> get availableCardTypes {
+    return reserve.availableCardTypes
+        .followedBy(dungeonRow.map((card) => card.type));
+  }
+
+  Card purchaseCard(CardType cardType) {
+    if (cardType.set == CardSet.reserve) {
+      return reserve.purchaseCard(cardType);
+    }
+    Card card = dungeonRow.firstWhere((card) => card.type == cardType);
+    dungeonRow.remove(card);
+    return card;
+  }
 }
 
 class PlayerDeck {
@@ -634,10 +649,19 @@ class Card {
 }
 
 class Library {
-  List<Card> make(String name, {int? amount}) {
+  List<Card> make(String name, int amount) {
     for (var type in baseSetAllCardTypes) {
       if (type.name == name) {
-        return List.generate(amount ?? type.count, (_) => Card._(type));
+        return List.generate(amount, (_) => Card._(type));
+      }
+    }
+    throw ArgumentError('"$name" is not a known card name');
+  }
+
+  List<Card> makeAll(String name) {
+    for (var type in baseSetAllCardTypes) {
+      if (type.name == name) {
+        return List.generate(type.count, (_) => Card._(type));
       }
     }
     throw ArgumentError('"$name" is not a known card name');
@@ -683,48 +707,3 @@ class ArtifactToken extends LootToken {
   @override
   String toString() => artifact.toString();
 }
-
-// Dungeon Row
-// Reserve
-// Dungeon Discard Pile
-//
-// Player
-// - Discard Pile
-// - Gold
-//
-// Turn
-// - Player Resources (Skill, Swords, Boots)
-// - Clank Change (positive or negative)
-//
-//
-// Cards
-// - Burgle
-// - Stumble
-// - Sidestep
-// - Scramble
-// - Monsters
-//
-// Tokens
-// - Artifact
-// - Major Secret
-// - Minor Secret
-// - Market Item
-// - Monkey Idol
-// - Mastery token
-// - Gold
-//
-//
-// Dragon Rage
-//
-// Clank
-// - Dragon Cubes
-// - Player Cubes
-//
-//
-// Reserve
-// - Goblin (Monster)
-// - Mercenery
-// - Explore
-// - Secret Tome
-//
-//

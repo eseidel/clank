@@ -50,6 +50,7 @@ enum PlayEffect {
   none,
   drawOneCard,
   drawTwoCards,
+  drawThreeCards,
   gainTwoGold,
 }
 
@@ -143,4 +144,29 @@ const List<CardType> baseSetAllCardTypes = [
       swords: 1,
       boots: 1,
       skillCost: 1),
+
+  // Unique Cards
+  CardType(
+      name: 'Brilliance',
+      set: CardSet.dungeon,
+      count: 1,
+      effect: PlayEffect.drawThreeCards,
+      skillCost: 6),
+  CardType(
+      name: 'Elven Boots',
+      set: CardSet.dungeon,
+      count: 1,
+      skill: 1,
+      boots: 1,
+      points: 2,
+      effect: PlayEffect.drawOneCard,
+      skillCost: 4),
+  CardType(
+      name: 'Diamond',
+      set: CardSet.dungeon,
+      count: 1,
+      points: 8,
+      effect: PlayEffect.drawOneCard,
+      acquireClank: 2,
+      skillCost: 8),
 ];

@@ -146,13 +146,11 @@ class RandomPlanner implements Planner {
       return true;
     }
 
-    // Add from reserve
-    for (var cardType in board.reserve.availableCardTypes) {
+    for (var cardType in board.availableCardTypes) {
       if (canPurchase(cardType)) {
         yield Purchase(cardType: cardType);
       }
     }
-    // Add from dungeon row
   }
 
   @override
