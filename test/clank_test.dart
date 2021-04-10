@@ -8,7 +8,7 @@ void main() {
   Library library = Library();
 
   test('deck shuffles when empty', () {
-    Deck deck = Deck();
+    PlayerDeck deck = PlayerDeck();
     expect(deck.cardCount, 0);
     expect(() => deck.discardPlayAreaAndDrawNewHand(Random(0), 1),
         throwsArgumentError);

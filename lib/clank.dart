@@ -13,7 +13,7 @@ enum PlayerStatus {
 
 // Responsible for storing player data.  Synchronous, trusted.
 class Player {
-  Deck deck;
+  PlayerDeck deck;
   PlayerStatus status = PlayerStatus.inGame;
   Planner planner;
   late PlayerToken token;
@@ -32,6 +32,7 @@ class Player {
   }
 
   bool get hasArtifact => loot.any((token) => token is ArtifactToken);
+  bool get inGame => status == PlayerStatus.inGame;
 
   bool get canTakeArtifact {
     int artifactCount =
@@ -41,10 +42,23 @@ class Player {
     return artifactCount < maxArtifacts;
   }
 
-  void updateStatus(Space goal) {
-    if (location == goal && hasArtifact) {
-      status = PlayerStatus.escaped;
+  bool updateStatus(Board board) {
+    // Don't ever change status once we set it, it's used for mastery token
+    // score bonus caculation, etc.
+    if (!inGame) {
+      return false;
     }
+    if (location == board.graph.start && hasArtifact) {
+      status = PlayerStatus.escaped;
+      print('$this escaped!');
+      return true;
+    }
+    if (board.healthForPlayer(color) <= 0) {
+      status = PlayerStatus.knockedOut;
+      print('$this was knocked out!');
+      return true;
+    }
+    return false;
   }
 
   int calculateTotalPoints() {
@@ -52,6 +66,8 @@ class Player {
     total += deck.calculateTotalPoints();
     total += loot.fold(0, (sum, loot) => sum + loot.points);
     total += gold;
+    // Mastery token bonus for escaping.
+    total += status == PlayerStatus.escaped ? 20 : 0;
     return total;
   }
 
@@ -66,6 +82,8 @@ class ClankGame {
   int? seed;
   final Random _random;
   bool isComplete = false;
+  Player? playerFirstOut;
+  int countdownTrackIndex = 0;
 
   ClankGame({required List<Planner> planners, this.seed})
       : players = planners
@@ -124,6 +142,7 @@ class ClankGame {
   void executeAction(Turn turn, Action action) {
     if (action is PlayCard) {
       turn.playCardIgnoringEffects(action.card);
+      // TODO: Handle card effects!
       return;
     }
     if (action is EndTurn) {
@@ -145,14 +164,48 @@ class ClankGame {
     assert(turn.hand.isEmpty);
     activePlayer.deck.discardPlayAreaAndDrawNewHand(_random);
     // Refill the dungeon row
+    bool dragonAttacks = board.refillDungeonRow();
     // Perform dragon attacks as needed from dungeon row.
+    if (dragonAttacks) {
+      board.dragonAttack(_random);
+    }
+  }
+
+  void moveCountdownTrack() {
+    countdownTrackIndex++;
+    if (countdownTrackIndex >= 4) {
+      // Knock out any remaining players.
+      for (var player in players) {
+        board.takeDamage(player.color, Board.playerMaxHealth);
+        player.updateStatus(board);
+      }
+      isComplete = true;
+      return;
+    }
+    int additionalCubes = [0, 1, 2, 3][countdownTrackIndex];
+    board.dragonAttack(_random, additionalCubes: additionalCubes);
+  }
+
+  bool updatePlayerStatuses() {
+    bool changedStatus = false;
+    for (var player in players) {
+      changedStatus |= player.updateStatus(board);
+    }
+    return changedStatus;
   }
 
   // This probably belongs outside of the game class.
   Future<void> takeTurn() async {
     final turn = Turn(player: activePlayer);
     // If the player is the first-out, perform countdown turn instead.
+    if (activePlayer == playerFirstOut) {
+      moveCountdownTrack();
+      return;
+    }
     // If the player is otherwise off board (dead, out), ignore the turn.
+    if (activePlayer.status != PlayerStatus.inGame) {
+      return;
+    }
     Action action;
     do {
       action = await activePlayer.planner.nextAction(turn, board);
@@ -161,7 +214,12 @@ class ClankGame {
       //print(turn);
     } while (!(action is EndTurn));
     executeEndOfTurn(turn);
-    activePlayer.updateStatus(board.graph.start);
+    bool statusChanged = updatePlayerStatuses();
+    // If players changed status, start countdown track!
+    if (playerFirstOut == null && statusChanged) {
+      playerFirstOut =
+          players.firstWhere((player) => player.status != PlayerStatus.inGame);
+    }
     isComplete = checkForEndOfGame();
     activePlayer = nextPlayer();
   }
@@ -171,9 +229,9 @@ class ClankGame {
     return !players.any((player) => player.status == PlayerStatus.inGame);
   }
 
-  static Deck createStarterDeck() {
+  static PlayerDeck createStarterDeck() {
     var library = Library();
-    Deck deck = Deck();
+    PlayerDeck deck = PlayerDeck();
     deck.addAll(library.make('Burgle'));
     deck.addAll(library.make('Stumble'));
     deck.addAll(library.make('Sidestep'));
@@ -226,6 +284,9 @@ class ClankGame {
     // Fill reserve.
     Library library = Library();
     board.reserve = Reserve(library);
+
+    board.dungeonDeck = library.makeDungeonDeck().toList();
+    board.fillDungeonRowFirstTimeReplacingDragons(_random);
     // Set Rage level
   }
 }
@@ -373,10 +434,19 @@ class DragonBag extends CubeCounts {
   // Dragon cube, give it back to the Board/whatever.
 }
 
+extension Pile<T> on List<T> {
+  List<T> takeAndRemoveUpTo(int count) {
+    List<T> taken = take(count).toList();
+    removeRange(0, count);
+    return taken;
+  }
+}
+
 class Board {
   static const int playerMaxHealth = 10;
   static const int dragonMaxCubeCount = 24;
   static const int playerMaxCubeCount = 30;
+  static const int dungeonRowMaxSize = 6;
   static const List<int> rageValues = <int>[2, 2, 3, 3, 4, 4, 5];
 
   int rageIndex = 0; // TODO: Set according to number of players.
@@ -385,6 +455,7 @@ class Board {
   late Reserve reserve;
   List<Card> dungeonDiscard = [];
   List<Card> dungeonRow = [];
+  late List<Card> dungeonDeck;
 
   // Should these be private?
   CubeCounts playerCubeStashes = CubeCounts(startWith: playerMaxCubeCount);
@@ -393,6 +464,29 @@ class Board {
   DragonBag dragonBag = DragonBag();
 
   Board();
+
+  void fillDungeonRowFirstTimeReplacingDragons(Random random) {
+    assert(dungeonRow.isEmpty);
+    dungeonDeck.shuffle(random); // Our job to shuffle first time.
+    // On first fill, replace any dragon cards.
+    List<Card> newCards = dungeonDeck
+        .where((card) => !card.type.dragon)
+        .take(dungeonRowMaxSize)
+        .toList();
+    for (var card in newCards) {
+      dungeonDeck.remove(card);
+    }
+    dungeonDeck.shuffle(random);
+    dungeonRow.addAll(newCards);
+  }
+
+  bool refillDungeonRow() {
+    int needed = dungeonRowMaxSize - dungeonRow.length;
+    List<Card> newCards = dungeonDeck.takeAndRemoveUpTo(needed);
+    bool newDragon = newCards.any((card) => card.type.dragon);
+    dungeonRow.addAll(newCards);
+    return newDragon;
+  }
 
   void increaseDragonRage() {
     if (rageIndex < rageValues.length - 1) {
@@ -417,15 +511,21 @@ class Board {
     clankArea.addTo(color, takenCount);
   }
 
-  void dragonAttack(Random random) {
+  int cubeCountForNormalDragonAttack() {
+    int dungeonRowDangerCount =
+        dungeonRow.fold(0, (sum, card) => card.type.danger ? 1 : 0);
+    return dragonRageCubeCount + dungeonRowDangerCount;
+  }
+
+  void dragonAttack(Random random, {int additionalCubes = 0}) {
     // Take clank from area to bag.
     for (var color in PlayerColor.values) {
       dragonBag.addTo(color, clankArea.countFor(color));
     }
     clankArea = CubeCounts();
-
-    // Draw # of cubes = to rage number
-    var drawn = dragonBag.pickCubes(random, dragonRageCubeCount);
+    int numberOfCubes = cubeCountForNormalDragonAttack() + additionalCubes;
+    print('DRAGON ATTACK ($numberOfCubes cubes)');
+    var drawn = dragonBag.pickCubes(random, numberOfCubes);
     for (var color in PlayerColor.values) {
       playerDamageTaken.addTo(color, drawn.countFor(color));
     }
@@ -442,7 +542,7 @@ class Board {
   }
 }
 
-class Deck {
+class PlayerDeck {
   // First is the 'top' of the pile (next to draw).
   List<Card> drawPile = <Card>[];
   // First is first drawn.
@@ -452,7 +552,7 @@ class Deck {
   // last is the 'top' (most recently discarded), but order doesn't matter.
   late List<Card> discardPile;
 
-  Deck({List<Card>? cards}) {
+  PlayerDeck({List<Card>? cards}) {
     discardPile = cards ?? <Card>[];
   }
 
@@ -541,6 +641,14 @@ class Library {
       }
     }
     throw ArgumentError('"$name" is not a known card name');
+  }
+
+  Iterable<Card> makeDungeonDeck() {
+    var dungeonTypes =
+        baseSetAllCardTypes.where((type) => type.set == CardSet.dungeon);
+    var dungeonCardLists = dungeonTypes
+        .map((type) => List.generate(type.count, (_) => Card._(type)));
+    return dungeonCardLists.expand((element) => element);
   }
 }
 
