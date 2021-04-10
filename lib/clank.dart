@@ -107,16 +107,15 @@ class ClankGame {
   }
 
   void executePurchase(Turn turn, Purchase action) {
-    Card card = action.card;
-    turn.skill -= card.skillCost;
+    CardType cardType = action.cardType;
+    turn.skill -= cardType.skillCost;
     assert(turn.skill >= 0);
     // Should fighting be handled as a separate action?
-    turn.swords -= card.swordsCost;
+    turn.swords -= cardType.swordsCost;
     assert(turn.swords >= 0);
 
-    // This should take a CardType and return a Card.
-    Card purchased = board.reserve.purchaseCard(card);
-    turn.player.deck.add(purchased);
+    Card card = board.reserve.purchaseCard(cardType);
+    turn.player.deck.add(card);
     print('${turn.player} buys $card');
   }
 
@@ -242,21 +241,19 @@ class Reserve {
   }
 
   // Should this be CardType instead of Card?
-  Iterable<Card> get availableCards sync* {
+  Iterable<CardType> get availableCardTypes sync* {
     for (var pile in piles) {
-      if (pile.isNotEmpty) yield pile.first;
+      if (pile.isNotEmpty) yield pile.first.type;
     }
   }
 
-  // This should take a CardType and return the actual card.
-  Card purchaseCard(Card card) {
+  Card purchaseCard(CardType cardType) {
     for (var pile in piles) {
-      // This could be better by comparing cardType.
-      if (pile.isNotEmpty && pile.contains(card)) {
-        pile.remove(card);
+      if (pile.isNotEmpty && pile.first.type == cardType) {
+        return pile.removeLast();
       }
     }
-    return card;
+    throw ArgumentError('No cards in reserve of type $cardType');
   }
 }
 
@@ -518,6 +515,23 @@ class Deck {
 }
 
 class Card {
+  final CardType type;
+  // Don't construct this const (would end up sharing instances).
+  Card._(this.type);
+
+  String get name => type.name;
+  int get skill => type.skill;
+  int get boots => type.boots;
+  int get swords => type.swords;
+
+  int get clank => type.clank;
+  int get points => type.points;
+
+  @override
+  String toString() => type.name;
+}
+
+class CardType {
   final String name;
   final int skill;
   final int boots;
@@ -529,8 +543,7 @@ class Card {
   final int skillCost;
   final int swordsCost;
 
-  // You don't want to construct this const (you'll end up sharing instances)
-  Card({
+  const CardType({
     this.name = '',
     this.skill = 0,
     this.boots = 0,
@@ -546,7 +559,7 @@ class Card {
 }
 
 class Library {
-  Map cardConstructors = {};
+  Map cardNameToType = {};
 
   // Maybe these should be actual templates and then we can talk about the
   // description of a card (e.g. when planning actions) separately from an
@@ -561,16 +574,16 @@ class Library {
     int swordsCost = 0,
     int points = 0,
   }) {
-    cardConstructors[name] = () => Card(
-          name: name,
-          skill: skill,
-          boots: boots,
-          swords: swords,
-          clank: clank,
-          skillCost: skillCost,
-          swordsCost: swordsCost,
-          points: points,
-        );
+    cardNameToType[name] = CardType(
+      name: name,
+      skill: skill,
+      boots: boots,
+      swords: swords,
+      clank: clank,
+      skillCost: skillCost,
+      swordsCost: swordsCost,
+      points: points,
+    );
   }
 
   Library() {
@@ -586,12 +599,10 @@ class Library {
     _card(name: 'Secret Tome', points: 7, skillCost: 7);
   }
 
-  List<Card> makeCards(String name, int ammount) {
-    var constructor = cardConstructors[name];
-    return List.generate(ammount, (index) => constructor());
-  }
+  List<Card> makeCards(String name, int ammount) =>
+      List.generate(ammount, (_) => Card._(cardNameToType[name]));
 
-  Card make(String name) => cardConstructors[name]();
+  Card make(String name) => Card._(cardNameToType[name]);
 }
 
 // This could be an enum using one of the enum packages.

@@ -34,9 +34,9 @@ class Traverse extends Action {
 }
 
 class Purchase extends Action {
-  final Card card;
-  Purchase({required this.card}) {
-    assert(card.swordsCost > 0 || card.skillCost > 0);
+  final CardType cardType;
+  Purchase({required this.cardType}) {
+    assert(cardType.swordsCost > 0 || cardType.skillCost > 0);
   }
 }
 
@@ -139,16 +139,16 @@ class RandomPlanner implements Planner {
   }
 
   Iterable<Action> possiblePurchases(Turn turn, Board board) sync* {
-    bool canPurchase(Card card) {
-      if (card.swordsCost > turn.swords) return false;
-      if (card.skillCost > turn.skill) return false;
+    bool canPurchase(CardType cardType) {
+      if (cardType.swordsCost > turn.swords) return false;
+      if (cardType.skillCost > turn.skill) return false;
       return true;
     }
 
     // Add from reserve
-    for (var card in board.reserve.availableCards) {
-      if (canPurchase(card)) {
-        yield Purchase(card: card);
+    for (var cardType in board.reserve.availableCardTypes) {
+      if (canPurchase(cardType)) {
+        yield Purchase(cardType: cardType);
       }
     }
     // Add from dungeon row
