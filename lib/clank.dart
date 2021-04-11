@@ -148,6 +148,15 @@ class ClankGame {
     print('${turn.player} buys $card');
   }
 
+  void executeCardClank(Turn turn, CardType card) {
+    int actualAdjustment = board.adjustClank(activePlayer.color, card.clank);
+    if (actualAdjustment != card.clank) {
+      assert(actualAdjustment.isNegative ||
+          board.playerCubeStashes.countFor(turn.player.color) == 0);
+      turn.leftoverClankReduction += actualAdjustment - card.clank;
+    }
+  }
+
   void executeAction(Turn turn, Action action) {
     if (action is PlayCard) {
       CardType cardType = action.cardType;

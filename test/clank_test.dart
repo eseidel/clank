@@ -270,4 +270,19 @@ void main() {
     game.executeAction(turn, Purchase(cardType: emerald));
     expect(board.clankArea.totalCubes, 2);
   });
+
+  test('negative clank', () {
+    var game = ClankGame(planners: [MockPlanner()]);
+    var stumble = library.cardTypeByName('Stumble');
+    Turn turn = Turn(player: game.players.first);
+    expect(game.board.clankArea.totalCubes, 0);
+    game.executeCardClank(turn, stumble);
+    expect(turn.leftoverClankReduction, 0);
+    expect(game.board.clankArea.totalCubes, 1);
+
+    var moveSilently = library.cardTypeByName('Move Silently');
+    game.executeCardClank(turn, moveSilently);
+    expect(turn.leftoverClankReduction, 1);
+    expect(game.board.clankArea.totalCubes, 0);
+  });
 }
