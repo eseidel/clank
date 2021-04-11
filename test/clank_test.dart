@@ -51,9 +51,27 @@ void main() {
     var board = Board();
     expect(board.damageTakenByPlayer(PlayerColor.blue), 0);
     expect(board.healthForPlayer(PlayerColor.blue), 10);
+    expect(board.playerCubeStashes.countFor(PlayerColor.blue), 30);
     board.takeDamage(PlayerColor.blue, 2);
     expect(board.damageTakenByPlayer(PlayerColor.blue), 2);
     expect(board.healthForPlayer(PlayerColor.blue), 8);
+    expect(board.playerCubeStashes.countFor(PlayerColor.blue), 28);
+    board.healDamage(PlayerColor.blue, 1);
+    expect(board.damageTakenByPlayer(PlayerColor.blue), 1);
+    expect(board.healthForPlayer(PlayerColor.blue), 9);
+    expect(board.playerCubeStashes.countFor(PlayerColor.blue), 29);
+    board.healDamage(PlayerColor.blue, 2);
+    expect(board.damageTakenByPlayer(PlayerColor.blue), 0);
+    expect(board.healthForPlayer(PlayerColor.blue), 10);
+    expect(board.playerCubeStashes.countFor(PlayerColor.blue), 30);
+
+    board.adjustClank(PlayerColor.blue, 30);
+    board.moveDragonAreaToBag();
+    // Not valid to try to take damage with no cubes (should check first).
+    expect(() => board.takeDamage(PlayerColor.blue, 2), throwsArgumentError);
+    expect(board.damageTakenByPlayer(PlayerColor.blue), 0);
+    expect(board.healthForPlayer(PlayerColor.blue), 10);
+    expect(board.playerCubeStashes.countFor(PlayerColor.blue), 0);
   });
 
   test('takeAndRemoveUpTo', () {
@@ -265,7 +283,7 @@ void main() {
     board.dungeonRow.addAll(library.make('Emerald', 1));
     var emerald = board.dungeonRow.last.type;
     Turn turn = Turn(player: game.players.first);
-    turn.skill = emerald.skillCost; // Enough for Emerald
+    turn.skill = emerald.skillCost;
     expect(board.clankArea.totalCubes, 0);
     game.executeAction(turn, Purchase(cardType: emerald));
     expect(board.clankArea.totalCubes, 2);
@@ -277,10 +295,32 @@ void main() {
     board.dungeonRow.addAll(library.make('Silver Spear', 1));
     var silverSpear = board.dungeonRow.last.type;
     Turn turn = Turn(player: game.players.first);
-    turn.skill = silverSpear.skillCost; // Enough for Silver Spear
+    turn.skill = silverSpear.skillCost;
     expect(turn.swords, 0);
     game.executeAction(turn, Purchase(cardType: silverSpear));
     expect(turn.swords, 1);
+  });
+
+  test('acquireHearts effect', () {
+    var game = ClankGame(planners: [MockPlanner()]);
+    var player = game.players.first;
+    var board = game.board;
+    board.dungeonRow.addAll(library.make('Amulet of Vigor', 2));
+    var amuletOfVigor = board.dungeonRow.last.type;
+    Turn turn = Turn(player: game.players.first);
+
+    // Does nothing if you haven't taken damage.
+    expect(board.damageTakenByPlayer(player.color), 0);
+    turn.skill = amuletOfVigor.skillCost;
+    game.executeAction(turn, Purchase(cardType: amuletOfVigor));
+    expect(board.damageTakenByPlayer(player.color), 0);
+
+    // But heals one on acquire if you have.
+    board.takeDamage(player.color, 2);
+    expect(board.damageTakenByPlayer(player.color), 2);
+    turn.skill = amuletOfVigor.skillCost;
+    game.executeAction(turn, Purchase(cardType: amuletOfVigor));
+    expect(board.damageTakenByPlayer(player.color), 1);
   });
 
   test('negative clank', () {

@@ -132,6 +132,9 @@ class ClankGame {
       turn.adjustClank(board, card.type.acquireClank);
     }
     turn.swords += card.type.acquireSwords;
+    if (card.type.acquireHearts != 0) {
+      board.healDamage(turn.player.color, card.type.acquireHearts);
+    }
   }
 
   void executePurchase(Turn turn, Purchase action) {
@@ -195,6 +198,8 @@ class ClankGame {
     if (dragonAttacks) {
       board.dragonAttack(_random);
     }
+    // ASSERTs do not pass yet!  We're leaking cubes.
+    // board.assertTotalClankCubeCounts();
   }
 
   void moveCountdownTrack() {
@@ -411,6 +416,8 @@ String colorToString(PlayerColor color) {
   return ['Red', 'Yellow', 'Green', 'Blue'][color.index];
 }
 
+// An alternative would be 120 instances of a Cube class which had an enum
+// representing where each cube was at that moment.
 class CubeCounts {
   final List<int> _playerCubeCounts;
 
@@ -531,7 +538,21 @@ class Board {
       playerMaxHealth - damageTakenByPlayer(color);
 
   void takeDamage(PlayerColor color, int amount) {
+    // It is *not* OK to call this if you can't take damage.
+    // All damage sources are by-choice, other than the dragon
+    // And the dragon gives cubes when taking damage.
+    int takenCount = playerCubeStashes.takeFrom(color, amount);
+    if (takenCount != amount) {
+      throw ArgumentError("Don't call takeDamage without enough cubes left");
+    }
     playerDamageTaken.addTo(color, amount);
+  }
+
+  int healDamage(PlayerColor color, int amount) {
+    // It's OK to call this even if you can't heal.
+    int healed = playerDamageTaken.takeFrom(color, amount);
+    playerCubeStashes.addTo(color, healed);
+    return healed;
   }
 
   int adjustClank(PlayerColor color, int amount) {
@@ -572,6 +593,8 @@ class Board {
     print('DRAGON ATTACK ($numberOfCubes cubes)');
     var drawn = dragonBag.pickCubes(random, numberOfCubes);
     for (var color in PlayerColor.values) {
+      // Give the cubes back so they can be used for damage accounting.
+      playerCubeStashes.addTo(color, drawn.countFor(color));
       playerDamageTaken.addTo(color, drawn.countFor(color));
     }
   }

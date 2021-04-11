@@ -23,6 +23,7 @@ class CardType {
 
   final int acquireClank;
   final int acquireSwords;
+  final int acquireHearts;
 
   final int count;
   final int drawCards;
@@ -42,6 +43,7 @@ class CardType {
     this.dragon = false,
     this.acquireClank = 0,
     this.acquireSwords = 0,
+    this.acquireHearts = 0,
     this.danger = false,
     this.companion = false,
     this.drawCards = 0,
@@ -230,5 +232,54 @@ const List<CardType> baseSetAllCardTypes = [
     skillCost: 5,
     companion: true,
     dragon: true,
+  ),
+  CardType(
+    name: 'Scepter of the Ape Lord',
+    set: CardSet.dungeon,
+    count: 1,
+    clank: 3,
+    skill: 3,
+    skillCost: 3,
+    points: 3,
+  ),
+  CardType(
+    name: 'Singing Sword',
+    set: CardSet.dungeon,
+    count: 1,
+    points: 2,
+    skill: 3,
+    swords: 2,
+    clank: 1,
+    skillCost: 5,
+    dragon: true,
+  ),
+  CardType(
+    name: 'Elven Cloak',
+    set: CardSet.dungeon,
+    count: 1,
+    points: 2,
+    skill: 1,
+    clank: -2,
+    drawCards: 1,
+    skillCost: 4,
+  ),
+  CardType(
+    name: 'Elven Dagger',
+    set: CardSet.dungeon,
+    count: 1,
+    points: 2,
+    skill: 1,
+    swords: 1,
+    drawCards: 1,
+    skillCost: 4,
+  ),
+  CardType(
+    name: 'Amulet of Vigor',
+    set: CardSet.dungeon,
+    count: 1,
+    points: 3,
+    skill: 4,
+    acquireHearts: 1,
+    skillCost: 7,
   ),
 ];
