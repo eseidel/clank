@@ -21,6 +21,7 @@ class CardType {
   final bool danger; // Only used for Dragon Shrine and Kobold?
 
   final int acquireClank;
+  final int acquireSwords;
 
   final int count;
   final int drawCards;
@@ -39,6 +40,7 @@ class CardType {
     this.points = 0,
     this.dragon = false,
     this.acquireClank = 0,
+    this.acquireSwords = 0,
     this.danger = false,
     this.drawCards = 0,
     this.gainGold = 0,
@@ -154,6 +156,15 @@ const List<CardType> baseSetAllCardTypes = [
       boots: 2,
       clank: -2,
       skillCost: 3),
+  CardType(
+    name: 'Silver Spear',
+    set: CardSet.dungeon,
+    count: 2,
+    points: 2,
+    swords: 3,
+    skillCost: 3,
+    acquireSwords: 1,
+  ),
 
   // Unique Cards
   CardType(

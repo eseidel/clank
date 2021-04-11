@@ -271,6 +271,18 @@ void main() {
     expect(board.clankArea.totalCubes, 2);
   });
 
+  test('acquireSwords effect', () {
+    var game = ClankGame(planners: [MockPlanner()]);
+    var board = game.board;
+    board.dungeonRow.addAll(library.make('Silver Spear', 1));
+    var silverSpear = board.dungeonRow.last.type;
+    Turn turn = Turn(player: game.players.first);
+    turn.skill = silverSpear.skillCost; // Enough for Silver Spear
+    expect(turn.swords, 0);
+    game.executeAction(turn, Purchase(cardType: silverSpear));
+    expect(turn.swords, 1);
+  });
+
   test('negative clank', () {
     var game = ClankGame(planners: [MockPlanner()]);
     var stumble = library.cardTypeByName('Stumble');

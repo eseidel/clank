@@ -131,6 +131,7 @@ class ClankGame {
     if (card.type.acquireClank != 0) {
       turn.adjustClank(board, card.type.acquireClank);
     }
+    turn.swords += card.type.acquireSwords;
   }
 
   void executePurchase(Turn turn, Purchase action) {
