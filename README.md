@@ -11,14 +11,14 @@ dart run bin/simulate.dart
 ```
 
 ## Missing Features
-* Dungeon Row
-* Dragon Attacks
 * Crystal Cave exhaustion
-* All non-reserve cards.
+* Many Cards
+* Devices
+* Combat
 * Market
-* End Game "Countdown Track"
 * Healing
 * Various card effects (trashing, teleport, etc.)
+* Missing "deep" half of map.
 
 ## Issues
 * Random planners take 100s of turns to complete game.
