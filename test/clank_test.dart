@@ -301,6 +301,18 @@ void main() {
     expect(turn.swords, 1);
   });
 
+  test('acquireBoots effect', () {
+    var game = ClankGame(planners: [MockPlanner()]);
+    var board = game.board;
+    board.dungeonRow.addAll(library.make('Boots of Swiftness', 1));
+    var bootsOfSwiftness = board.dungeonRow.last.type;
+    Turn turn = Turn(player: game.players.first);
+    turn.skill = bootsOfSwiftness.skillCost;
+    expect(turn.boots, 0);
+    game.executeAction(turn, Purchase(cardType: bootsOfSwiftness));
+    expect(turn.boots, 1);
+  });
+
   test('acquireHearts effect', () {
     var game = ClankGame(planners: [MockPlanner()]);
     var player = game.players.first;

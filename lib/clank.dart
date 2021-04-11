@@ -132,6 +132,7 @@ class ClankGame {
       turn.adjustClank(board, card.type.acquireClank);
     }
     turn.swords += card.type.acquireSwords;
+    turn.boots += card.type.acquireBoots;
     if (card.type.acquireHearts != 0) {
       board.healDamage(turn.player.color, card.type.acquireHearts);
     }
@@ -207,8 +208,9 @@ class ClankGame {
     if (countdownTrackIndex >= 4) {
       // Knock out any remaining players.
       for (var player in players) {
-        board.takeDamage(player.color, Board.playerMaxHealth);
-        player.updateStatus(board);
+        if (player.inGame) {
+          player.status = PlayerStatus.knockedOut;
+        }
       }
       isComplete = true;
       return;

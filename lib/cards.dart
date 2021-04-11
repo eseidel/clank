@@ -24,6 +24,7 @@ class CardType {
   final int acquireClank;
   final int acquireSwords;
   final int acquireHearts;
+  final int acquireBoots;
 
   final int count;
   final int drawCards;
@@ -44,6 +45,7 @@ class CardType {
     this.acquireClank = 0,
     this.acquireSwords = 0,
     this.acquireHearts = 0,
+    this.acquireBoots = 0,
     this.danger = false,
     this.companion = false,
     this.drawCards = 0,
@@ -187,6 +189,17 @@ const List<CardType> baseSetAllCardTypes = [
     clank: -2,
     skillCost: 2,
   ),
+  CardType(
+    name: 'Cleric of the Sun',
+    set: CardSet.dungeon,
+    companion: true,
+    count: 2,
+    points: 1,
+    skill: 2,
+    swords: 1,
+    acquireHearts: 1,
+    skillCost: 3,
+  ),
 
   // Unique Cards
   CardType(
@@ -281,5 +294,14 @@ const List<CardType> baseSetAllCardTypes = [
     skill: 4,
     acquireHearts: 1,
     skillCost: 7,
+  ),
+  CardType(
+    name: 'Boots of Swiftness',
+    set: CardSet.dungeon,
+    count: 1,
+    points: 3,
+    boots: 3,
+    acquireBoots: 1,
+    skillCost: 5,
   ),
 ];
