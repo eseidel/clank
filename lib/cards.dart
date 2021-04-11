@@ -17,8 +17,9 @@ class CardType {
   final int skillCost;
   final int swordsCost;
 
-  final bool dragon; // Not yet implemented!
+  final bool dragon;
   final bool danger; // Only used for Dragon Shrine and Kobold?
+  final bool companion;
 
   final int acquireClank;
   final int acquireSwords;
@@ -42,6 +43,7 @@ class CardType {
     this.acquireClank = 0,
     this.acquireSwords = 0,
     this.danger = false,
+    this.companion = false,
     this.drawCards = 0,
     this.gainGold = 0,
     this.effect = PlayEffect.none,
@@ -155,6 +157,7 @@ const List<CardType> baseSetAllCardTypes = [
     swords: 1,
     boots: 1,
     skillCost: 1,
+    companion: true,
   ),
   CardType(
     name: 'Move Silently',
@@ -171,7 +174,16 @@ const List<CardType> baseSetAllCardTypes = [
     points: 2,
     swords: 3,
     skillCost: 3,
-    acquireSwords: 1,,
+    acquireSwords: 1,
+  ),
+  CardType(
+    name: 'Sneak',
+    set: CardSet.dungeon,
+    count: 2,
+    skill: 1,
+    boots: 1,
+    clank: -2,
+    skillCost: 2,
   ),
 
   // Unique Cards
@@ -207,5 +219,16 @@ const List<CardType> baseSetAllCardTypes = [
     count: 1,
     gainGold: 5,
     skillCost: 6,
+  ),
+  CardType(
+    name: 'MonkeyBot 3000',
+    set: CardSet.dungeon,
+    count: 1,
+    clank: 3,
+    drawCards: 3,
+    points: 1,
+    skillCost: 5,
+    companion: true,
+    dragon: true,
   ),
 ];

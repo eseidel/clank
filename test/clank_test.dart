@@ -297,4 +297,32 @@ void main() {
     expect(turn.leftoverClankReduction, 1);
     expect(game.board.clankArea.totalCubes, 0);
   });
+
+  test('dragon reveal causes attack', () {
+    var game = ClankGame(planners: [MockPlanner()]);
+    var board = game.board;
+    // Refill works, dragonRevealed is false for non-dragon cards.
+    board.dungeonRow = [];
+    board.dungeonDeck = library.make('Move Silently', 6); // no dragon
+    bool dragonRevealed = board.refillDungeonRow();
+    expect(dragonRevealed, false);
+    expect(board.dungeonRow.length, 6);
+
+    // Revealing a dragon shows dragonRevealed (also testing partial refill)
+    board.dungeonRow.removeRange(0, 3);
+    board.dungeonDeck = library.make('MonkeyBot 3000', 1); // dragon!
+    dragonRevealed = board.refillDungeonRow();
+    expect(dragonRevealed, true);
+    expect(board.dungeonRow.length, 4);
+
+    board.dungeonDeck = library.make('MonkeyBot 3000', 1); // dragon!
+    dragonRevealed = board.refillDungeonRow();
+    expect(dragonRevealed, true);
+    expect(board.dungeonRow.length, 5);
+
+    board.dungeonDeck = library.make('Move Silently', 6); // no dragon
+    dragonRevealed = board.refillDungeonRow();
+    expect(dragonRevealed, false);
+    expect(board.dungeonRow.length, 6);
+  });
 }
