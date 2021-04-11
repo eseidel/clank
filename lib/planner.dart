@@ -37,7 +37,16 @@ class Traverse extends Action {
 class Purchase extends Action {
   final CardType cardType;
   Purchase({required this.cardType}) {
-    assert(cardType.swordsCost > 0 || cardType.skillCost > 0);
+    assert(cardType.skillCost > 0);
+    assert(cardType.swordsCost == 0);
+  }
+}
+
+class Fight extends Action {
+  final CardType cardType;
+  Fight({required this.cardType}) {
+    assert(cardType.skillCost == 0);
+    assert(cardType.swordsCost > 0);
   }
 }
 
@@ -57,8 +66,7 @@ class Turn {
   bool usingTeleporter = false;
   bool hasKey = false;
 
-  void playCardIgnoringEffects(CardType cardType) {
-    player.deck.playCard(cardType);
+  void addUseEffectsFromCard(CardType cardType) {
     skill += cardType.skill;
     boots += cardType.boots;
     swords += cardType.swords;
@@ -96,6 +104,17 @@ class Turn {
   String toString() {
     return '${skill}sk ${boots}b ${swords}sw -${leftoverClankReduction}c';
   }
+}
+
+bool cardUsableAtLocation(CardType cardType, Space location) {
+  if (cardType.location == Location.crystalCave) {
+    return location.isCrystalCave;
+  }
+  if (cardType.location == Location.deep) {
+    return location.inDepths;
+  }
+  assert(cardType.location == Location.everywhere);
+  return true;
 }
 
 // Distance between two points is a multi-variable result
@@ -157,15 +176,27 @@ class RandomPlanner implements Planner {
   }
 
   Iterable<Action> possiblePurchases(Turn turn, Board board) sync* {
-    bool canPurchase(CardType cardType) {
-      if (cardType.swordsCost > turn.swords) return false;
+    bool canAfford(CardType cardType) {
+      if (cardType.interaction != Interaction.buy) return false;
       if (cardType.skillCost > turn.skill) return false;
       return true;
     }
 
+    bool canDefeat(CardType cardType) {
+      if (cardType.interaction != Interaction.fight) return false;
+      if (cardType.swordsCost > turn.swords) return false;
+      return true;
+    }
+
     for (var cardType in board.availableCardTypes) {
-      if (canPurchase(cardType)) {
+      if (!cardUsableAtLocation(cardType, turn.player.location)) {
+        continue;
+      }
+      if (canAfford(cardType)) {
         yield Purchase(cardType: cardType);
+      }
+      if (canDefeat(cardType)) {
+        yield Fight(cardType: cardType);
       }
     }
   }

@@ -4,6 +4,18 @@ enum CardSet {
   dungeon,
 }
 
+enum Interaction {
+  fight, // monster
+  use, // device
+  buy, // everything else
+}
+
+enum Location {
+  everywhere,
+  crystalCave,
+  deep,
+}
+
 class CardType {
   final String name;
   final CardSet set;
@@ -14,12 +26,17 @@ class CardType {
   final int clank;
   final int points;
 
+  final int othersClank;
+
   final int skillCost;
   final int swordsCost;
 
   final bool dragon;
-  final bool danger; // Only used for Dragon Shrine and Kobold?
+  final bool danger;
   final bool companion;
+  final Location location;
+
+  final int arriveClank;
 
   final int acquireClank;
   final int acquireSwords;
@@ -30,10 +47,14 @@ class CardType {
   final int drawCards;
   final int gainGold;
   final PlayEffect effect;
+  final Interaction interaction;
+
+  final bool neverDiscards; // Special just for Goblin.
 
   const CardType({
     required this.name,
     required this.set,
+    bool isDevice = false,
     this.skill = 0,
     this.boots = 0,
     this.swords = 0,
@@ -42,17 +63,23 @@ class CardType {
     this.swordsCost = 0,
     this.points = 0,
     this.dragon = false,
+    this.arriveClank = 0,
     this.acquireClank = 0,
     this.acquireSwords = 0,
     this.acquireHearts = 0,
     this.acquireBoots = 0,
     this.danger = false,
     this.companion = false,
+    this.location = Location.everywhere,
     this.drawCards = 0,
     this.gainGold = 0,
+    this.othersClank = 0,
     this.effect = PlayEffect.none,
     required this.count,
-  });
+    this.neverDiscards = false,
+  }) : interaction = (isDevice)
+            ? Interaction.use
+            : (swordsCost > 0 ? Interaction.fight : Interaction.buy);
 
   @override
   String toString() => name;
@@ -303,5 +330,92 @@ const List<CardType> baseSetAllCardTypes = [
     boots: 3,
     acquireBoots: 1,
     skillCost: 5,
+  ),
+
+  // Monsters
+  CardType(
+    name: 'Goblin',
+    set: CardSet.reserve,
+    count: 1,
+    swordsCost: 2,
+    gainGold: 1,
+    neverDiscards: true,
+  ),
+  CardType(
+    name: 'Cave Troll',
+    set: CardSet.dungeon,
+    count: 1,
+    location: Location.deep,
+    dragon: true,
+    swordsCost: 4,
+    gainGold: 3,
+    drawCards: 2,
+  ),
+  CardType(
+    name: 'Belcher',
+    set: CardSet.dungeon,
+    count: 2,
+    dragon: true,
+    swordsCost: 2,
+    gainGold: 4,
+    clank: 2,
+  ),
+  CardType(
+    name: 'Animated Door',
+    set: CardSet.dungeon,
+    count: 2,
+    dragon: true,
+    swordsCost: 1,
+    boots: 1,
+  ),
+  CardType(
+    name: 'Ogre',
+    set: CardSet.dungeon,
+    count: 2,
+    dragon: true,
+    swordsCost: 3,
+    gainGold: 5,
+  ),
+  CardType(
+    name: 'Orc Grunt',
+    set: CardSet.dungeon,
+    count: 3,
+    dragon: true,
+    swordsCost: 2,
+    gainGold: 3,
+  ),
+  CardType(
+    name: 'Crystal Golem',
+    set: CardSet.dungeon,
+    count: 2,
+    location: Location.crystalCave,
+    swordsCost: 3,
+    skill: 3,
+  ),
+  CardType(
+    name: 'Kobold',
+    set: CardSet.dungeon,
+    count: 3,
+    dragon: true,
+    danger: true,
+    swordsCost: 1,
+    skill: 1,
+  ),
+  CardType(
+    name: 'Watcher',
+    set: CardSet.dungeon,
+    count: 3,
+    arriveClank: 1,
+    swordsCost: 3,
+    gainGold: 3,
+    othersClank: 1,
+  ),
+  CardType(
+    name: 'Overlord',
+    set: CardSet.dungeon,
+    count: 2,
+    arriveClank: 1,
+    swordsCost: 2,
+    drawCards: 2,
   ),
 ];

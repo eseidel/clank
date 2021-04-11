@@ -37,7 +37,7 @@ class Player {
 
   bool get canTakeArtifact {
     int artifactCount =
-        loot.fold(0, (sum, token) => (token is ArtifactToken) ? 1 : 0);
+        loot.fold(0, (sum, token) => sum + ((token is ArtifactToken) ? 1 : 0));
     // Allow more artifacts with backpacks.
     int maxArtifacts = 1;
     return artifactCount < maxArtifacts;
@@ -142,37 +142,57 @@ class ClankGame {
     CardType cardType = action.cardType;
     turn.skill -= cardType.skillCost;
     assert(turn.skill >= 0);
-    // Should fighting be handled as a separate action?
-    turn.swords -= cardType.swordsCost;
-    assert(turn.swords >= 0);
+    assert(cardType.swordsCost == 0);
 
-    Card card = board.purchaseCard(cardType);
-    // Once we support combat, we would not add the monsters to the deck.
+    Card card = board.takeCard(cardType);
     turn.player.deck.add(card);
     executeAcquireEffects(turn, card);
     print('${turn.player} buys $card');
   }
 
-  void executeCardClank(Turn turn, CardType card) {
-    int actualAdjustment = board.adjustClank(activePlayer.color, card.clank);
-    if (actualAdjustment != card.clank) {
-      assert(actualAdjustment.isNegative ||
-          board.playerCubeStashes.countFor(turn.player.color) == 0);
-      turn.leftoverClankReduction += actualAdjustment - card.clank;
+  void executeFight(Turn turn, Fight action) {
+    CardType cardType = action.cardType;
+    turn.swords -= cardType.swordsCost;
+    assert(turn.swords >= 0);
+    assert(cardType.skillCost == 0);
+
+    Card card = board.takeCard(cardType);
+    if (!card.type.neverDiscards) {
+      board.dungeonDiscard.add(card);
     }
+    executeCardUseEffects(turn, action.cardType);
+    print('${turn.player} fought $card');
+  }
+
+  void executeOthersClank(CardType cardType) {
+    // No need to adjust turn negative clank balance since its just others.
+    for (var player in players) {
+      if (player != activePlayer) {
+        board.adjustClank(player.color, cardType.othersClank);
+      }
+    }
+  }
+
+  // Used by both PlayCard and Fight.
+  void executeCardUseEffects(Turn turn, CardType cardType) {
+    assert(cardUsableAtLocation(cardType, turn.player.location));
+    turn.addUseEffectsFromCard(cardType);
+    if (cardType.clank != 0) {
+      turn.adjustClank(board, cardType.clank);
+    }
+    if (cardType.drawCards != 0) {
+      turn.player.deck.drawCards(_random, cardType.drawCards);
+    }
+    if (cardType.othersClank != 0) {
+      executeOthersClank(cardType);
+    }
+    turn.player.gold += cardType.gainGold;
   }
 
   void executeAction(Turn turn, Action action) {
     if (action is PlayCard) {
-      CardType cardType = action.cardType;
-      turn.playCardIgnoringEffects(action.cardType);
-      if (cardType.clank != 0) {
-        turn.adjustClank(board, cardType.clank);
-      }
-      if (cardType.drawCards != 0) {
-        turn.player.deck.drawCards(_random, cardType.drawCards);
-      }
-      turn.player.gold += cardType.gainGold;
+      turn.player.deck.playCard(action.cardType);
+      executeCardUseEffects(turn, action.cardType);
       return;
     }
     if (action is EndTurn) {
@@ -186,7 +206,21 @@ class ClankGame {
       executePurchase(turn, action);
       return;
     }
+    if (action is Fight) {
+      executeFight(turn, action);
+      return;
+    }
     assert(false);
+  }
+
+  void addClankForAll(Turn turn, int clank) {
+    for (var player in players) {
+      if (player == activePlayer) {
+        turn.adjustClank(board, clank);
+      } else {
+        board.adjustClank(player.color, clank);
+      }
+    }
   }
 
   void executeEndOfTurn(Turn turn) {
@@ -194,24 +228,30 @@ class ClankGame {
     assert(turn.hand.isEmpty);
     activePlayer.deck.discardPlayAreaAndDrawNewHand(_random);
     // Refill the dungeon row
-    bool dragonAttacks = board.refillDungeonRow();
-    // Perform dragon attacks as needed from dungeon row.
-    if (dragonAttacks) {
+    ArrivalTriggers triggers = board.refillDungeonRow();
+    if (triggers.clankForAll != 0) {
+      addClankForAll(turn, triggers.clankForAll);
+    }
+    // Triggers happen before dragon attacks.
+    if (triggers.dragonAttacks) {
       board.dragonAttack(_random);
     }
     // ASSERTs do not pass yet!  We're leaking cubes.
     // board.assertTotalClankCubeCounts();
   }
 
+  void knockOutAllPlayersStillInGame() {
+    for (var player in players) {
+      if (player.inGame) {
+        player.status = PlayerStatus.knockedOut;
+      }
+    }
+  }
+
   void moveCountdownTrack() {
     countdownTrackIndex++;
     if (countdownTrackIndex >= 4) {
-      // Knock out any remaining players.
-      for (var player in players) {
-        if (player.inGame) {
-          player.status = PlayerStatus.knockedOut;
-        }
-      }
+      knockOutAllPlayersStillInGame();
       isComplete = true;
       return;
     }
@@ -344,7 +384,11 @@ class Reserve {
     }
   }
 
-  Card purchaseCard(CardType cardType) {
+  Card takeCard(CardType cardType) {
+    // Goblin is a special hack, and is never discarded.
+    if (cardType.neverDiscards) {
+      return Card._(cardType);
+    }
     for (var pile in piles) {
       if (pile.isNotEmpty && pile.first.type == cardType) {
         return pile.removeLast();
@@ -442,14 +486,14 @@ class CubeCounts {
 
   int countFor(PlayerColor color) => _playerCubeCounts[color.index];
 
-  int get totalCubes =>
+  int get totalPlayerCubes =>
       _playerCubeCounts.fold(0, (previous, count) => previous + count);
 }
 
 class DragonBag extends CubeCounts {
   int dragonCubesLeft = Board.dragonMaxCubeCount;
 
-  CubeCounts pickCubes(Random random, int count) {
+  CubeCounts pickAndRemoveCubes(Random random, int count) {
     int dragonIndex = -1;
     List<int> cubes = [];
     for (var color in PlayerColor.values) {
@@ -458,16 +502,21 @@ class DragonBag extends CubeCounts {
     cubes.addAll(List.filled(dragonCubesLeft, dragonIndex));
     cubes.shuffle(random);
 
+    // Player cube, give it back to them.
+    // Dragon cube, give it back to the Board/whatever.
     CubeCounts counts = CubeCounts();
     for (var picked in cubes.take(count)) {
-      if (picked != dragonIndex) {
+      if (picked == dragonIndex) {
+        dragonCubesLeft -= 1;
+      } else {
+        _playerCubeCounts[picked] -= 1;
         counts.addTo(PlayerColor.values[picked], 1);
       }
     }
     return counts;
   }
-  // Player cube, give it back to them.
-  // Dragon cube, give it back to the Board/whatever.
+
+  int get totalCubes => totalPlayerCubes + dragonCubesLeft;
 }
 
 extension Pile<T> on List<T> {
@@ -477,6 +526,12 @@ extension Pile<T> on List<T> {
     removeRange(0, actual);
     return taken;
   }
+}
+
+class ArrivalTriggers {
+  bool dragonAttacks;
+  int clankForAll;
+  ArrivalTriggers({required this.dragonAttacks, required this.clankForAll});
 }
 
 class Board {
@@ -517,12 +572,14 @@ class Board {
     dungeonRow.addAll(newCards);
   }
 
-  bool refillDungeonRow() {
+  ArrivalTriggers refillDungeonRow() {
     int needed = dungeonRowMaxSize - dungeonRow.length;
     List<Card> newCards = dungeonDeck.takeAndRemoveUpTo(needed);
     bool newDragon = newCards.any((card) => card.type.dragon);
+    int arrivalClank =
+        newCards.fold(0, (sum, card) => sum + card.type.arriveClank);
     dungeonRow.addAll(newCards);
-    return newDragon;
+    return ArrivalTriggers(dragonAttacks: newDragon, clankForAll: arrivalClank);
   }
 
   void increaseDragonRage() {
@@ -578,7 +635,7 @@ class Board {
 
   int cubeCountForNormalDragonAttack() {
     int dungeonRowDangerCount =
-        dungeonRow.fold(0, (sum, card) => card.type.danger ? 1 : 0);
+        dungeonRow.fold(0, (sum, card) => sum + (card.type.danger ? 1 : 0));
     return dragonRageCubeCount + dungeonRowDangerCount;
   }
 
@@ -593,7 +650,7 @@ class Board {
     moveDragonAreaToBag();
     int numberOfCubes = cubeCountForNormalDragonAttack() + additionalCubes;
     print('DRAGON ATTACK ($numberOfCubes cubes)');
-    var drawn = dragonBag.pickCubes(random, numberOfCubes);
+    var drawn = dragonBag.pickAndRemoveCubes(random, numberOfCubes);
     for (var color in PlayerColor.values) {
       // Give the cubes back so they can be used for damage accounting.
       playerCubeStashes.addTo(color, drawn.countFor(color));
@@ -616,9 +673,9 @@ class Board {
         .followedBy(dungeonRow.map((card) => card.type));
   }
 
-  Card purchaseCard(CardType cardType) {
+  Card takeCard(CardType cardType) {
     if (cardType.set == CardSet.reserve) {
-      return reserve.purchaseCard(cardType);
+      return reserve.takeCard(cardType);
     }
     Card card = dungeonRow.firstWhere((card) => card.type == cardType);
     dungeonRow.remove(card);

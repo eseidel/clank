@@ -95,14 +95,14 @@ void main() {
   test('negative clank', () {
     var game = ClankGame(planners: [MockPlanner()], seed: 0);
     Turn turn = Turn(player: game.players.first);
-    expect(game.board.clankArea.totalCubes, 0);
+    expect(game.board.clankArea.totalPlayerCubes, 0);
     addAndPlayCard(game, turn, 'Stumble');
     expect(turn.leftoverClankReduction, 0);
-    expect(game.board.clankArea.totalCubes, 1);
+    expect(game.board.clankArea.totalPlayerCubes, 1);
 
     addAndPlayCard(game, turn, 'Move Silently');
     expect(turn.leftoverClankReduction, -1);
-    expect(game.board.clankArea.totalCubes, 0);
+    expect(game.board.clankArea.totalPlayerCubes, 0);
   });
 
   test('drawCards edgecase', () {
@@ -277,6 +277,16 @@ void main() {
     expect(fourPlayer.board.cubeCountForNormalDragonAttack(), 5);
   });
 
+  test('dragon attack cube count with danger', () {
+    var twoPlayer =
+        ClankGame(planners: [MockPlanner(), MockPlanner()], seed: 0);
+    expect(twoPlayer.board.cubeCountForNormalDragonAttack(), 3);
+    twoPlayer.board.dungeonRow = library.make('Kobold', 1);
+    expect(twoPlayer.board.cubeCountForNormalDragonAttack(), 4);
+    twoPlayer.board.dungeonRow = library.make('Kobold', 2);
+    expect(twoPlayer.board.cubeCountForNormalDragonAttack(), 5);
+  });
+
   test('acquireClank effect', () {
     var game = ClankGame(planners: [MockPlanner()]);
     var board = game.board;
@@ -284,9 +294,9 @@ void main() {
     var emerald = board.dungeonRow.last.type;
     Turn turn = Turn(player: game.players.first);
     turn.skill = emerald.skillCost;
-    expect(board.clankArea.totalCubes, 0);
+    expect(board.clankArea.totalPlayerCubes, 0);
     game.executeAction(turn, Purchase(cardType: emerald));
-    expect(board.clankArea.totalCubes, 2);
+    expect(board.clankArea.totalPlayerCubes, 2);
   });
 
   test('acquireSwords effect', () {
@@ -337,17 +347,15 @@ void main() {
 
   test('negative clank', () {
     var game = ClankGame(planners: [MockPlanner()]);
-    var stumble = library.cardTypeByName('Stumble');
     Turn turn = Turn(player: game.players.first);
-    expect(game.board.clankArea.totalCubes, 0);
-    game.executeCardClank(turn, stumble);
+    expect(game.board.clankArea.totalPlayerCubes, 0);
+    addAndPlayCard(game, turn, 'Stumble');
     expect(turn.leftoverClankReduction, 0);
-    expect(game.board.clankArea.totalCubes, 1);
+    expect(game.board.clankArea.totalPlayerCubes, 1);
 
-    var moveSilently = library.cardTypeByName('Move Silently');
-    game.executeCardClank(turn, moveSilently);
-    expect(turn.leftoverClankReduction, 1);
-    expect(game.board.clankArea.totalCubes, 0);
+    addAndPlayCard(game, turn, 'Move Silently');
+    expect(turn.leftoverClankReduction, -1);
+    expect(game.board.clankArea.totalPlayerCubes, 0);
   });
 
   test('dragon reveal causes attack', () {
@@ -356,25 +364,88 @@ void main() {
     // Refill works, dragonRevealed is false for non-dragon cards.
     board.dungeonRow = [];
     board.dungeonDeck = library.make('Move Silently', 6); // no dragon
-    bool dragonRevealed = board.refillDungeonRow();
+    bool dragonRevealed = board.refillDungeonRow().dragonAttacks;
     expect(dragonRevealed, false);
     expect(board.dungeonRow.length, 6);
 
     // Revealing a dragon shows dragonRevealed (also testing partial refill)
     board.dungeonRow.removeRange(0, 3);
     board.dungeonDeck = library.make('MonkeyBot 3000', 1); // dragon!
-    dragonRevealed = board.refillDungeonRow();
+    dragonRevealed = board.refillDungeonRow().dragonAttacks;
     expect(dragonRevealed, true);
     expect(board.dungeonRow.length, 4);
 
     board.dungeonDeck = library.make('MonkeyBot 3000', 1); // dragon!
-    dragonRevealed = board.refillDungeonRow();
+    dragonRevealed = board.refillDungeonRow().dragonAttacks;
     expect(dragonRevealed, true);
     expect(board.dungeonRow.length, 5);
 
     board.dungeonDeck = library.make('Move Silently', 6); // no dragon
-    dragonRevealed = board.refillDungeonRow();
+    dragonRevealed = board.refillDungeonRow().dragonAttacks;
     expect(dragonRevealed, false);
     expect(board.dungeonRow.length, 6);
+  });
+
+  test('arriveClank effect', () {
+    var game = ClankGame(planners: [MockPlanner()]);
+    var board = game.board;
+    // Refill works, dragonRevealed is false for non-dragon cards.
+    board.dungeonRow = [];
+    board.dungeonDeck = library.make('Overlord', 1); // arrival clank, no dragon
+    ArrivalTriggers triggers = board.refillDungeonRow();
+    expect(triggers.dragonAttacks, false);
+    expect(triggers.clankForAll, 1);
+    expect(board.dungeonRow.length, 1);
+
+    board.dungeonDeck = library.make('Overlord', 2); // arrival clank, no dragon
+    triggers = board.refillDungeonRow();
+    expect(triggers.dragonAttacks, false);
+    expect(triggers.clankForAll, 2);
+    expect(board.dungeonRow.length, 3);
+  });
+
+  test('arrival effects happen before dragon attack', () {
+    var game = ClankGame(planners: [MockPlanner(), MockPlanner()]);
+    var board = game.board;
+    Turn turn = Turn(player: game.activePlayer);
+    board.dungeonRow = [];
+    board.dungeonDeck = library.make('Overlord', 1); // arrival clank, no dragon
+    expect(board.clankArea.totalPlayerCubes, 0);
+    game.activePlayer.deck.hand = []; // avoid assert in executeEndOfTurn.
+    game.executeEndOfTurn(turn);
+    expect(board.clankArea.totalPlayerCubes, 2);
+    expect(board.dungeonRow.length, 1);
+
+    board.dungeonDeck = library.make('Overlord', 1); // arrival clank, no dragon
+    board.dungeonDeck.addAll(library.make('Animated Door', 1)); // dragon!
+    game.activePlayer.deck.hand = []; // avoid assert in executeEndOfTurn.
+    game.executeEndOfTurn(turn);
+    expect(board.clankArea.totalPlayerCubes, 0);
+    // 24 dragon cubes + 2 from each overlord, per player = 28
+    // Dragon attack: 3 cubes for 2 players, 28 - 3 = 25.
+    expect(board.dragonBag.totalCubes, 25);
+  });
+
+  test('canTakeArtifact', () {
+    var game = ClankGame(planners: [MockPlanner()]);
+    var player = game.activePlayer;
+    expect(player.canTakeArtifact, true);
+    player.loot = [ArtifactToken(Artifact.all.first)];
+    expect(player.canTakeArtifact, false);
+    // TODO: Test other loot doesn't confuse canTakeArtifact.
+  });
+
+  test('fight monsters', () {
+    var game = ClankGame(planners: [MockPlanner()]);
+    var player = game.activePlayer;
+    var board = game.board;
+    board.dungeonRow = library.make('Kobold', 1);
+    Turn turn = Turn(player: player);
+    turn.swords = 1;
+    game.executeAction(turn, Fight(cardType: board.dungeonRow.first.type));
+    expect(board.dungeonDiscard.length, 1);
+    expect(board.dungeonRow.length, 0);
+    expect(turn.skill, 1);
+    expect(turn.swords, 0);
   });
 }
