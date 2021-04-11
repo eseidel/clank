@@ -69,24 +69,37 @@ class Space {
   Special special;
   bool isCrystalCave;
   bool isMarket;
+  bool inDepths;
   int expectedArtifactValue; // Only valid if special == Artifact;
 
-  Space({
-    this.name = '',
+  Space.start()
+      : name = 'start',
+        inDepths = false,
+        special = Special.none,
+        isCrystalCave = false,
+        isMarket = false,
+        expectedArtifactValue = -1;
+
+  // Non-depths
+  Space.at(
+    int column,
+    int row, {
     this.special = Special.none,
     this.isCrystalCave = false,
-    this.isMarket = false,
     this.expectedArtifactValue = -1,
-  });
+  })  : name = '${row}x$column',
+        inDepths = false,
+        isMarket = false;
 
-  Space.at(
+  Space.depths(
     int column,
     int row, {
     this.special = Special.none,
     this.isCrystalCave = false,
     this.isMarket = false,
     this.expectedArtifactValue = -1,
-  }) : name = '${row}x$column';
+  })  : name = '${row}x$column',
+        inDepths = true;
 
   Iterable<Token> get loot => tokens.where((token) => !(token is PlayerToken));
 
@@ -185,15 +198,15 @@ class FrontGraphBuilder extends GraphBuilder {
 
   List<Space> buildFourthRow() {
     List<Space> row = [
-      Space.at(3, 0),
-      Space.at(3, 1,
+      Space.depths(3, 0),
+      Space.depths(3, 1,
           isCrystalCave: true,
           special: Special.artifact,
           expectedArtifactValue: 5),
-      Space.at(3, 2, isMarket: true, special: Special.minorSecret),
-      Space.at(3, 3, isMarket: true, special: Special.minorSecret),
-      Space.at(3, 4, special: Special.artifact, expectedArtifactValue: 7),
-      Space.at(4, 4, isCrystalCave: true, special: Special.minorSecret),
+      Space.depths(3, 2, isMarket: true, special: Special.minorSecret),
+      Space.depths(3, 3, isMarket: true, special: Special.minorSecret),
+      Space.depths(3, 4, special: Special.artifact, expectedArtifactValue: 7),
+      Space.depths(4, 4, isCrystalCave: true, special: Special.minorSecret),
     ];
     connect(row[0], row[1]);
     connect(row[3], row[4]);
@@ -203,7 +216,7 @@ class FrontGraphBuilder extends GraphBuilder {
   }
 
   Graph build() {
-    var start = Space(name: 'start');
+    var start = Space.start();
     var first = buildFirstRow();
     connectStart(start, first[0]);
     var second = buildSecondRow();
