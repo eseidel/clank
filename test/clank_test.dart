@@ -26,7 +26,7 @@ void main() {
   });
 
   test('initial deal', () {
-    var game = ClankGame(planners: [MockPlanner()]);
+    var game = ClankGame(planners: [MockPlanner()], seed: 0);
     expect(game.players.length, 1);
     expect(game.players.first.deck.cardCount, 10);
   });
@@ -53,7 +53,7 @@ void main() {
   });
 
   test('negative clank', () {
-    var game = ClankGame(planners: [MockPlanner()]);
+    var game = ClankGame(planners: [MockPlanner()], seed: 0);
     var stumble = library.cardTypeByName('Stumble');
     Turn turn = Turn(player: game.players.first);
     expect(game.board.clankArea.totalCubes, 0);
@@ -65,5 +65,36 @@ void main() {
     game.executeCardClank(turn, moveSilently);
     expect(turn.leftoverClankReduction, 1);
     expect(game.board.clankArea.totalCubes, 0);
+  });
+
+  test('dragon attack rage cube count', () {
+    var twoPlayer =
+        ClankGame(planners: [MockPlanner(), MockPlanner()], seed: 0);
+    var threePlayer = ClankGame(
+        planners: [MockPlanner(), MockPlanner(), MockPlanner()], seed: 0);
+    var fourPlayer = ClankGame(
+        planners: [MockPlanner(), MockPlanner(), MockPlanner(), MockPlanner()],
+        seed: 0);
+
+    expect(twoPlayer.board.cubeCountForNormalDragonAttack(), 3);
+    expect(threePlayer.board.cubeCountForNormalDragonAttack(), 2);
+    expect(fourPlayer.board.cubeCountForNormalDragonAttack(), 2);
+
+    fourPlayer.board.increaseDragonRage();
+    expect(fourPlayer.board.cubeCountForNormalDragonAttack(), 2);
+    fourPlayer.board.increaseDragonRage();
+    expect(fourPlayer.board.cubeCountForNormalDragonAttack(), 3);
+    fourPlayer.board.increaseDragonRage();
+    expect(fourPlayer.board.cubeCountForNormalDragonAttack(), 3);
+    fourPlayer.board.increaseDragonRage();
+    expect(fourPlayer.board.cubeCountForNormalDragonAttack(), 4);
+    fourPlayer.board.increaseDragonRage();
+    expect(fourPlayer.board.cubeCountForNormalDragonAttack(), 4);
+    fourPlayer.board.increaseDragonRage();
+    expect(fourPlayer.board.cubeCountForNormalDragonAttack(), 5);
+    fourPlayer.board.increaseDragonRage();
+    expect(fourPlayer.board.cubeCountForNormalDragonAttack(), 5);
+    fourPlayer.board.increaseDragonRage();
+    expect(fourPlayer.board.cubeCountForNormalDragonAttack(), 5);
   });
 }

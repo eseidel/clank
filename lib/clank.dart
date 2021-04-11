@@ -299,6 +299,7 @@ class ClankGame {
     board.dungeonDeck = library.makeDungeonDeck().toList();
     board.fillDungeonRowFirstTimeReplacingDragons(_random);
     // Set Rage level
+    board.setRageLevelForNumberOfPlayers(players.length);
   }
 }
 
@@ -528,6 +529,13 @@ class Board {
     int takenCount = clankArea.takeFrom(color, amount.abs());
     playerCubeStashes.addTo(color, takenCount);
     return takenCount * -1;
+  }
+
+  void setRageLevelForNumberOfPlayers(int playerCount) {
+    // playerCount = 1 is not supported in the base rules, left in for testing.
+    // assert(playerCount > 1);
+    assert(playerCount <= 4);
+    rageIndex = [3, 2, 1, 0][playerCount - 1];
   }
 
   int cubeCountForNormalDragonAttack() {
