@@ -21,7 +21,8 @@ class Player {
 
   int gold = 0;
   List<LootToken> loot = [];
-  Player({required this.planner, required this.deck});
+  Player({required this.planner, PlayerDeck? deck})
+      : deck = deck ?? PlayerDeck();
 
   Space get location => token.location!;
 
@@ -126,6 +127,12 @@ class ClankGame {
     // TODO: handle keys, exhaustion, etc.
   }
 
+  void executeAcquireEffects(Turn turn, Card card) {
+    if (card.type.acquireClank != 0) {
+      turn.adjustClank(board, card.type.acquireClank);
+    }
+  }
+
   void executePurchase(Turn turn, Purchase action) {
     CardType cardType = action.cardType;
     turn.skill -= cardType.skillCost;
@@ -135,25 +142,23 @@ class ClankGame {
     assert(turn.swords >= 0);
 
     Card card = board.purchaseCard(cardType);
+    // Once we support combat, we would not add the monsters to the deck.
     turn.player.deck.add(card);
+    executeAcquireEffects(turn, card);
     print('${turn.player} buys $card');
-  }
-
-  void executeCardClank(Turn turn, CardType card) {
-    int actualAdjustment = board.adjustClank(activePlayer.color, card.clank);
-    if (actualAdjustment != card.clank) {
-      assert(card.clank.isNegative ||
-          board.playerCubeStashes.countFor(turn.player.color) == 0);
-      turn.leftoverClankReduction += actualAdjustment - card.clank;
-    }
   }
 
   void executeAction(Turn turn, Action action) {
     if (action is PlayCard) {
-      turn.playCardIgnoringEffects(action.card);
-      if (action.card.clank != 0) {
-        executeCardClank(turn, action.card.type);
+      CardType cardType = action.cardType;
+      turn.playCardIgnoringEffects(action.cardType);
+      if (cardType.clank != 0) {
+        turn.adjustClank(board, cardType.clank);
       }
+      if (cardType.drawCards != 0) {
+        turn.player.deck.drawCards(_random, cardType.drawCards);
+      }
+      turn.player.gold += cardType.gainGold;
       return;
     }
     if (action is EndTurn) {
@@ -544,12 +549,15 @@ class Board {
     return dragonRageCubeCount + dungeonRowDangerCount;
   }
 
-  void dragonAttack(Random random, {int additionalCubes = 0}) {
-    // Take clank from area to bag.
+  void moveDragonAreaToBag() {
     for (var color in PlayerColor.values) {
       dragonBag.addTo(color, clankArea.countFor(color));
     }
     clankArea = CubeCounts();
+  }
+
+  void dragonAttack(Random random, {int additionalCubes = 0}) {
+    moveDragonAreaToBag();
     int numberOfCubes = cubeCountForNormalDragonAttack() + additionalCubes;
     print('DRAGON ATTACK ($numberOfCubes cubes)');
     var drawn = dragonBag.pickCubes(random, numberOfCubes);
@@ -618,10 +626,8 @@ class PlayerDeck {
     }
   }
 
-  void playCard(Card card) {
-    if (!hand.contains(card)) {
-      throw ArgumentError("Hand does not contain $card. Can't discard it.");
-    }
+  void playCard(CardType cardType) {
+    Card card = hand.firstWhere((card) => card.type == cardType);
     hand.remove(card);
     playArea.add(card);
   }
@@ -634,22 +640,25 @@ class PlayerDeck {
   //   discardPile.add(card);
   // }
 
-  List<Card> discardPlayAreaAndDrawNewHand(Random random, [int count = 5]) {
-    assert(hand.isEmpty);
-    discardPile.addAll(playArea);
-    playArea = [];
+  int drawCards(Random random, int count) {
+    List<Card> drawn = [];
     if (drawPile.length < count) {
+      drawn = drawPile;
       drawPile = discardPile;
       discardPile = [];
       drawPile.shuffle(random);
     }
-    if (count > drawPile.length) {
-      throw ArgumentError(
-          "Can't draw $count cards, only ${drawPile.length} in deck!");
-    }
-    hand = drawPile.take(count).toList();
-    drawPile = drawPile.sublist(count); // take() doens't actually remove.
-    return hand;
+    int leftToDraw = count - drawn.length;
+    drawn.addAll(drawPile.takeAndRemoveUpTo(leftToDraw));
+    hand.addAll(drawn);
+    return drawn.length;
+  }
+
+  int discardPlayAreaAndDrawNewHand(Random random, [int count = 5]) {
+    assert(hand.isEmpty);
+    discardPile.addAll(playArea);
+    playArea = [];
+    return drawCards(random, count);
   }
 
   int calculateTotalPoints() {

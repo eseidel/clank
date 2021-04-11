@@ -24,8 +24,8 @@ class Action {
 }
 
 class PlayCard extends Action {
-  final Card card;
-  PlayCard(this.card);
+  final CardType cardType;
+  PlayCard(this.cardType);
 }
 
 class Traverse extends Action {
@@ -49,7 +49,7 @@ class Turn {
   int skill = 0;
   int boots = 0;
   int swords = 0;
-  int leftoverClankReduction = 0;
+  int leftoverClankReduction = 0; // always negative
   Turn({required this.player});
 
   List<Card> get hand => player.deck.hand;
@@ -57,27 +57,45 @@ class Turn {
   bool usingTeleporter = false;
   bool hasKey = false;
 
-  void playCardIgnoringEffects(Card card) {
-    player.deck.playCard(card);
-    skill += card.skill;
-    boots += card.boots;
-    swords += card.swords;
+  void playCardIgnoringEffects(CardType cardType) {
+    player.deck.playCard(cardType);
+    skill += cardType.skill;
+    boots += cardType.boots;
+    swords += cardType.swords;
   }
   // Player, starting location, other state?
   // Current resources
+
+  // Does this belong on board instead?
+  int adjustClank(Board board, int desired) {
+    // You can't ever have both negative accumulated and a positive clank area.
+    assert(leftoverClankReduction == 0 ||
+        board.clankArea.countFor(player.color) == 0);
+    // lefover zero, desired neg ->  apply, letting leftover to remainder.
+    // leftover neg, desired neg  -> just update leftover
+    // leftover neg, desired pos  -> reduce leftover, reduce desired, apply
+    int actual = 0;
+    if (leftoverClankReduction == 0) {
+      actual = board.adjustClank(player.color, desired);
+      leftoverClankReduction = min(desired - actual, 0);
+    } else {
+      assert(leftoverClankReduction < 0);
+      // First apply to to the leftovers.
+      int reduced = desired + leftoverClankReduction;
+      if (reduced <= 0) {
+        leftoverClankReduction = reduced;
+      } else {
+        actual = board.adjustClank(player.color, reduced);
+        leftoverClankReduction = min(reduced - actual, 0);
+      }
+    }
+    return actual;
+  }
 
   @override
   String toString() {
     return '${skill}sk ${boots}b ${swords}sw -${leftoverClankReduction}c';
   }
-}
-
-int scoreForPlayer(Player player) {
-  // Value of artifacts
-  // value from tokens
-  // value from gold
-  // value from cards
-  return 0;
 }
 
 // Distance between two points is a multi-variable result
@@ -156,7 +174,7 @@ class RandomPlanner implements Planner {
   Future<Action> nextAction(Turn turn, Board board) async {
     // If cards in hand, play all those?
     if (turn.hand.isNotEmpty) {
-      return PlayCard(turn.hand.first);
+      return PlayCard(turn.hand.first.type);
     }
 
     List<Action> possibleActions = [];

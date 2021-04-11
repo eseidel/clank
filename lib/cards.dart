@@ -17,12 +17,14 @@ class CardType {
   final int skillCost;
   final int swordsCost;
 
-  final bool dragon;
+  final bool dragon; // Not yet implemented!
   final bool danger; // Only used for Dragon Shrine and Kobold?
 
   final int acquireClank;
 
   final int count;
+  final int drawCards;
+  final int gainGold;
   final PlayEffect effect;
 
   const CardType({
@@ -38,6 +40,8 @@ class CardType {
     this.dragon = false,
     this.acquireClank = 0,
     this.danger = false,
+    this.drawCards = 0,
+    this.gainGold = 0,
     this.effect = PlayEffect.none,
     required this.count,
   });
@@ -48,10 +52,6 @@ class CardType {
 
 enum PlayEffect {
   none,
-  drawOneCard,
-  drawTwoCards,
-  drawThreeCards,
-  gainTwoGold,
 }
 
 const List<CardType> baseSetAllCardTypes = [
@@ -91,7 +91,7 @@ const List<CardType> baseSetAllCardTypes = [
       count: 3,
       points: 4,
       skillCost: 4,
-      effect: PlayEffect.drawOneCard,
+      drawCards: 1,
       dragon: true,
       acquireClank: 2),
   CardType(
@@ -100,7 +100,7 @@ const List<CardType> baseSetAllCardTypes = [
       count: 2,
       points: 6,
       skillCost: 6,
-      effect: PlayEffect.drawOneCard,
+      drawCards: 1,
       dragon: true,
       acquireClank: 2),
   CardType(
@@ -109,33 +109,36 @@ const List<CardType> baseSetAllCardTypes = [
       count: 2,
       points: 5,
       skillCost: 5,
-      effect: PlayEffect.drawOneCard,
+      drawCards: 1,
       dragon: true,
       acquireClank: 2),
   CardType(
-      name: 'Bracers of Agility',
-      set: CardSet.dungeon,
-      points: 2,
-      count: 2,
-      skillCost: 5,
-      effect: PlayEffect.drawTwoCards),
+    name: 'Bracers of Agility',
+    set: CardSet.dungeon,
+    points: 2,
+    count: 2,
+    skillCost: 5,
+    drawCards: 2,
+  ),
   CardType(
-      name: 'Pickaxe',
-      set: CardSet.dungeon,
-      count: 2,
-      points: 2,
-      swords: 2,
-      skillCost: 4,
-      effect: PlayEffect.gainTwoGold),
+    name: 'Pickaxe',
+    set: CardSet.dungeon,
+    count: 2,
+    points: 2,
+    swords: 2,
+    skillCost: 4,
+    gainGold: 2,
+  ),
   CardType(
-      name: 'Lucky Coin',
-      set: CardSet.dungeon,
-      count: 2,
-      points: 1,
-      skill: 1,
-      skillCost: 1,
-      clank: 1,
-      effect: PlayEffect.drawOneCard),
+    name: 'Lucky Coin',
+    set: CardSet.dungeon,
+    count: 2,
+    points: 1,
+    skill: 1,
+    skillCost: 1,
+    clank: 1,
+    drawCards: 1,
+  ),
   CardType(
       name: 'Tunnel Guide',
       set: CardSet.dungeon,
@@ -154,26 +157,36 @@ const List<CardType> baseSetAllCardTypes = [
 
   // Unique Cards
   CardType(
-      name: 'Brilliance',
-      set: CardSet.dungeon,
-      count: 1,
-      effect: PlayEffect.drawThreeCards,
-      skillCost: 6),
+    name: 'Brilliance',
+    set: CardSet.dungeon,
+    count: 1,
+    drawCards: 3,
+    skillCost: 6,
+  ),
   CardType(
-      name: 'Elven Boots',
-      set: CardSet.dungeon,
-      count: 1,
-      skill: 1,
-      boots: 1,
-      points: 2,
-      effect: PlayEffect.drawOneCard,
-      skillCost: 4),
+    name: 'Elven Boots',
+    set: CardSet.dungeon,
+    count: 1,
+    skill: 1,
+    boots: 1,
+    points: 2,
+    drawCards: 1,
+    skillCost: 4,
+  ),
   CardType(
-      name: 'Diamond',
-      set: CardSet.dungeon,
-      count: 1,
-      points: 8,
-      effect: PlayEffect.drawOneCard,
-      acquireClank: 2,
-      skillCost: 8),
+    name: 'Diamond',
+    set: CardSet.dungeon,
+    count: 1,
+    points: 8,
+    drawCards: 1,
+    acquireClank: 2,
+    skillCost: 8,
+  ),
+  CardType(
+    name: 'Treasure Map',
+    set: CardSet.dungeon,
+    count: 1,
+    gainGold: 5,
+    skillCost: 6,
+  ),
 ];
