@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:clank/clank.dart';
+import 'package:clank/graph.dart';
 import 'package:clank/planner.dart';
 import 'package:test/test.dart';
 
@@ -461,5 +462,17 @@ void main() {
     expect(board.dungeonRow.length, 0);
     expect(turn.boots, 2);
     expect(turn.skill, 0);
+  });
+
+  test('zero score if knocked out in depths', () {
+    var game = ClankGame(planners: [MockPlanner()]);
+    var player = game.activePlayer;
+    expect(player.calculateTotalPoints(), 0);
+    player.gold = 5;
+    expect(player.calculateTotalPoints(), 5);
+    player.status = PlayerStatus.knockedOut;
+    expect(player.calculateTotalPoints(), 5);
+    player.token.location = Space.depths(0, 0);
+    expect(player.calculateTotalPoints(), 0);
   });
 }

@@ -63,6 +63,10 @@ class Player {
   }
 
   int calculateTotalPoints() {
+    // Zero score if you get knocked out while still in the depths.
+    if (status == PlayerStatus.knockedOut && location.inDepths) {
+      return 0;
+    }
     int total = 0;
     total += deck.calculateTotalPoints();
     total += loot.fold(0, (sum, loot) => sum + loot.points);
