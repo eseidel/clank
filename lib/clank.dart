@@ -271,8 +271,7 @@ class ClankGame {
     if (triggers.dragonAttacks) {
       board.dragonAttack(_random);
     }
-    // TODO: ASSERTs do not pass yet!  We're leaking cubes.
-    // board.assertTotalClankCubeCounts();
+    board.assertTotalClankCubeCounts();
   }
 
   void knockOutAllPlayersStillInGame() {
@@ -783,8 +782,7 @@ class Board {
     print('DRAGON ATTACK ($numberOfCubes cubes)');
     var drawn = dragonBag.pickAndRemoveCubes(random, numberOfCubes);
     for (var color in PlayerColor.values) {
-      // Give the cubes back so they can be used for damage accounting.
-      playerCubeStashes.addTo(color, drawn.countFor(color));
+      // Directly move the cubes to damageTaken (bypassing the stash).
       playerDamageTaken.addTo(color, drawn.countFor(color));
     }
   }

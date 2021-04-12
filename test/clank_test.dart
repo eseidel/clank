@@ -520,4 +520,24 @@ void main() {
     // TODO: Can't spend hp if you're almost dead.
     // TODO: Can't spend hp if you have no cubes to spend.
   });
+
+  test('cubes are not duplicated', () {
+    var game = ClankGame(planners: [MockPlanner()]);
+    var board = game.board;
+    var player = game.activePlayer;
+
+    Turn turn = Turn(player: player);
+    addAndPlayCard(game, turn, 'Stumble');
+    expect(board.playerCubeStashes.countFor(player.color), 29);
+    expect(board.clankArea.countFor(player.color), 1);
+    board.dungeonRow = [];
+    board.dungeonDeck = library.make('Orc Grunt', 1);
+    board.dragonBag.dragonCubesLeft = 0;
+    player.deck.hand = [];
+    game.executeEndOfTurn(turn);
+    expect(board.healthForPlayer(player.color), 9);
+    expect(board.clankArea.countFor(player.color), 0);
+    expect(board.dragonBag.countFor(player.color), 0);
+    expect(board.playerCubeStashes.countFor(player.color), 29);
+  });
 }
