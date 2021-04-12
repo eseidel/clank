@@ -561,6 +561,41 @@ void main() {
     expect(player.gold, 2);
     expect(board.availableCardTypes.contains(goblin), isTrue);
     // And it's never discarded (per the rules)
-    expect(board.dungeonDiscard.isEmpty, isTrue);
+    expect(board.dungeonDiscard, isEmpty);
+  });
+
+  test('using items', () {
+    var game = ClankGame(planners: [MockPlanner()]);
+    var player = game.activePlayer;
+    var allItems = Box().makeAllLootTokens();
+    Turn turn = Turn(player: player);
+    void addItemAndUse(String name) {
+      var item = allItems.firstWhere((item) => item.loot.name == name);
+      player.loot.add(item);
+      game.executeAction(turn, UseItem(item: item.loot));
+    }
+
+    game.board.takeDamage(player.color, 9);
+    expect(game.board.damageTakenByPlayer(player.color), 9);
+    addItemAndUse('Potion of Greater Healing');
+    expect(game.board.damageTakenByPlayer(player.color), 7);
+    addItemAndUse('Greater Treasure');
+    expect(player.gold, 5);
+    addItemAndUse('Greater Skill Boost');
+    expect(turn.skill, 5);
+    addItemAndUse('Flash of Brilliance');
+    expect(player.deck.hand.length, 8);
+    addItemAndUse('Potion of Healing');
+    expect(game.board.damageTakenByPlayer(player.color), 6);
+    addItemAndUse('Treasure');
+    expect(player.gold, 7);
+    addItemAndUse('Skill Boost');
+    expect(turn.skill, 7);
+    addItemAndUse('Potion of Strength');
+    expect(turn.swords, 2);
+    addItemAndUse('Potion of Swiftness');
+    expect(turn.boots, 1);
+    expect(player.loot, isEmpty);
+    expect(game.board.usedItems.length, 9);
   });
 }

@@ -16,7 +16,6 @@ dart run bin/simulate.dart
 * Market
 * Various card effects (trashing, teleport, etc.)
 * Missing "deep" half of map.
-* Spending health for swords to move.
 
 ## Issues
 * Most games end w/o escape since random planning just walks around.

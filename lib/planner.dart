@@ -38,6 +38,11 @@ class AcquireCard extends Action {
   }
 }
 
+class UseItem extends Action {
+  final Loot item;
+  UseItem({required this.item});
+}
+
 class Fight extends Action {
   final CardType cardType;
   Fight({required this.cardType}) {
@@ -225,6 +230,14 @@ class ActionGenerator {
       }
     }
   }
+
+  Iterable<Action> possibleItemUses() sync* {
+    // Similar to possibleCardPlays this walks all items instead of item types
+    // so it will yield duplicate UseItems when it shouldn't.
+    for (var item in turn.player.usableItems) {
+      yield UseItem(item: item.loot);
+    }
+  }
 }
 
 class RandomPlanner implements Planner {
@@ -253,6 +266,7 @@ class RandomPlanner implements Planner {
     }
     possible.addAll(generator.possibleMoves());
     possible.addAll(generator.possibleCardAcquisitions());
+    possible.addAll(generator.possibleItemUses());
 
     if (possible.isNotEmpty) {
       possible.shuffle(_random);

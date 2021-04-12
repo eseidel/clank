@@ -32,6 +32,14 @@ class Player {
     loot.add(token);
   }
 
+  LootToken useItem(Loot itemType) {
+    LootToken item = loot.firstWhere((item) => item.loot == itemType);
+    loot.remove(item);
+    return item;
+  }
+
+  Iterable<LootToken> get usableItems => loot.where((loot) => loot.loot.usable);
+
   bool get hasArtifact => loot.any((token) => token.isArtifact);
   bool get inGame => status == PlayerStatus.inGame;
 
@@ -164,7 +172,7 @@ class ClankGame {
     Card card = board.takeCard(cardType);
     turn.player.deck.add(card);
     executeAcquireCardEffects(turn, card);
-    print('${turn.player} buys $card');
+    print('${turn.player} acquires $card');
   }
 
   void executeFight(Turn turn, Fight action) {
@@ -216,8 +224,33 @@ class ClankGame {
 
     Card card = board.takeCard(cardType);
     board.dungeonDiscard.add(card);
-    executeCardUseEffects(turn, action.cardType);
-    print('${turn.player} used $card');
+    executeCardUseEffects(turn, cardType);
+    print('${turn.player} uses device $card');
+  }
+
+  void executeItemUseEffects(Turn turn, Loot itemType) {
+    assert(itemType.usable);
+
+    turn.swords += itemType.swords;
+    turn.boots += itemType.boots;
+    turn.skill += itemType.skill;
+    turn.player.gold += itemType.gold;
+
+    if (itemType.hearts != 0) {
+      board.healDamage(turn.player.color, itemType.hearts);
+    }
+    if (itemType.drawCards != 0) {
+      turn.player.deck.drawCards(_random, itemType.drawCards);
+    }
+  }
+
+  void executeUseItem(Turn turn, UseItem action) {
+    Loot itemType = action.item;
+    assert(itemType.usable);
+    var item = turn.player.useItem(itemType);
+    board.usedItems.add(item);
+    executeItemUseEffects(turn, itemType);
+    print('${turn.player} uses item $item');
   }
 
   void executeAction(Turn turn, Action action) {
@@ -243,6 +276,10 @@ class ClankGame {
     }
     if (action is UseDevice) {
       executeUseDevice(turn, action);
+      return;
+    }
+    if (action is UseItem) {
+      executeUseItem(turn, action);
       return;
     }
     assert(false);
@@ -448,9 +485,13 @@ enum LootType {
 class Loot {
   final LootType type;
   final String name;
+  final bool usable;
   final int count;
   final int points;
   final int hearts;
+  // It is detectable that this is "gold" and not "acquireGold" via cards like
+  // "Search" which can increase gold gained in a turn, hence you might wish
+  // to acquire a gold secret but delay using until played same turn as Search.
   final int gold;
   final int skill;
   final int drawCards;
@@ -464,6 +505,7 @@ class Loot {
     this.points = 0,
     this.hearts = 0,
     this.gold = 0,
+    this.usable = false,
     this.skill = 0,
     this.drawCards = 0,
   })  : type = LootType.majorSecret,
@@ -477,6 +519,7 @@ class Loot {
     this.points = 0,
     this.hearts = 0,
     this.gold = 0,
+    this.usable = false,
     this.skill = 0,
     this.drawCards = 0,
     this.acquireRage = 0,
@@ -495,6 +538,7 @@ class Loot {
         drawCards = 0,
         boots = 0,
         swords = 0,
+        usable = false,
         acquireRage = 1;
 
   const Loot.market({
@@ -508,6 +552,7 @@ class Loot {
         drawCards = 0,
         boots = 0,
         swords = 0,
+        usable = false,
         acquireRage = 0;
 
   @override
@@ -517,18 +562,24 @@ class Loot {
 List<Loot> allLootDescriptions = const [
   // Major Secrets
   Loot.majorSecret(name: 'Chalice', count: 3, points: 7),
-  Loot.majorSecret(name: 'Potion of Greater Healing', count: 2, hearts: 2),
-  Loot.majorSecret(name: 'Greater Treasure', count: 2, gold: 5),
-  Loot.majorSecret(name: 'Greater Skill Boost', count: 2, skill: 5),
-  Loot.majorSecret(name: 'Flash of Brilliance', count: 2, drawCards: 3),
+  Loot.majorSecret(
+      name: 'Potion of Greater Healing', usable: true, count: 2, hearts: 2),
+  Loot.majorSecret(name: 'Greater Treasure', usable: true, count: 2, gold: 5),
+  Loot.majorSecret(
+      name: 'Greater Skill Boost', usable: true, count: 2, skill: 5),
+  Loot.majorSecret(
+      name: 'Flash of Brilliance', usable: true, count: 2, drawCards: 3),
 
   // Minor Secrets
   Loot.minorSecret(name: 'Dragon Egg', count: 3, points: 3, acquireRage: 1),
-  Loot.minorSecret(name: 'Potion of Healing', count: 3, hearts: 1),
-  Loot.minorSecret(name: 'Treasure', count: 3, gold: 2),
-  Loot.minorSecret(name: 'Skill Boost', count: 3, skill: 2),
-  Loot.minorSecret(name: 'Potion of Strength', count: 2, swords: 2),
-  Loot.minorSecret(name: 'Potion of Swiftness', count: 2, boots: 1),
+  Loot.minorSecret(
+      name: 'Potion of Healing', usable: true, count: 3, hearts: 1),
+  Loot.minorSecret(name: 'Treasure', usable: true, count: 3, gold: 2),
+  Loot.minorSecret(name: 'Skill Boost', usable: true, count: 3, skill: 2),
+  Loot.minorSecret(
+      name: 'Potion of Strength', usable: true, count: 2, swords: 2),
+  Loot.minorSecret(
+      name: 'Potion of Swiftness', usable: true, count: 2, boots: 1),
   // Don't know how to trash yet.
   // Loot.minor(name: 'Magic Spring', count: 2, endOfTurnTrash: 1),
 
@@ -682,6 +733,7 @@ class Board {
   List<Card> dungeonDiscard = [];
   List<Card> dungeonRow = [];
   late List<Card> dungeonDeck;
+  List<LootToken> usedItems = []; // Mostly for accounting.
 
   // Should these be private?
   CubeCounts playerCubeStashes = CubeCounts(startWith: playerMaxCubeCount);
