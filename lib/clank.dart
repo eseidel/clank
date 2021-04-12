@@ -414,9 +414,8 @@ class Reserve {
           library.makeAll('Mercenary'),
           library.makeAll('Explore'),
           library.makeAll('Secret Tome'),
-        ] {
-    // TODO: Goblin
-  }
+          library.makeAll('Goblin'),
+        ];
 
   Iterable<CardType> get availableCardTypes sync* {
     for (var pile in piles) {
@@ -510,6 +509,9 @@ class Loot {
         boots = 0,
         swords = 0,
         acquireRage = 0;
+
+  @override
+  String toString() => name;
 }
 
 List<Loot> allLootDescriptions = const [

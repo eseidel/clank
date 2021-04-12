@@ -540,4 +540,27 @@ void main() {
     expect(board.dragonBag.countFor(player.color), 0);
     expect(board.playerCubeStashes.countFor(player.color), 29);
   });
+
+  test('fighting goblin', () {
+    var game = ClankGame(planners: [MockPlanner()]);
+    var board = game.board;
+    var player = game.activePlayer;
+
+    var goblin = library.cardTypeByName('Goblin');
+    Turn turn = Turn(player: player);
+    turn.swords = 4;
+    expect(player.gold, 0);
+    expect(board.availableCardTypes.contains(goblin), isTrue);
+    game.executeAction(turn, Fight(cardType: goblin));
+    expect(turn.swords, 2);
+    expect(player.gold, 1);
+    expect(board.availableCardTypes.contains(goblin), isTrue);
+    // It's possible to fight the goblin repeatedly.
+    game.executeAction(turn, Fight(cardType: goblin));
+    expect(turn.swords, 0);
+    expect(player.gold, 2);
+    expect(board.availableCardTypes.contains(goblin), isTrue);
+    // And it's never discarded (per the rules)
+    expect(board.dungeonDiscard.isEmpty, isTrue);
+  });
 }
