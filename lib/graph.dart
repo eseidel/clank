@@ -1,3 +1,5 @@
+import 'package:clank/clank.dart';
+
 class Edge {
   final Space start;
   final Space end;
@@ -43,11 +45,6 @@ class Token {
     location!.tokens.remove(this);
     location = null;
   }
-}
-
-class LootToken extends Token {
-  int points = 0;
-  LootToken({required this.points});
 }
 
 // Player always has a location, should override getter to be non-nullable.
@@ -101,7 +98,7 @@ class Space {
   })  : name = '${row}x$column',
         inDepths = true;
 
-  Iterable<Token> get loot => tokens.where((token) => !(token is PlayerToken));
+  Iterable<LootToken> get loot => tokens.whereType<LootToken>();
 
   @override
   String toString() => '[$name]';

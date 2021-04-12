@@ -431,9 +431,14 @@ void main() {
     var game = ClankGame(planners: [MockPlanner()]);
     var player = game.activePlayer;
     expect(player.canTakeArtifact, true);
-    player.loot = [ArtifactToken(Artifact.all.first)];
+    Box box = Box();
+    var loot = box.makeAllLootTokens();
+    // Previously only the loot item determined if had an artifact. :/
+    player.loot = [
+      loot.firstWhere((token) => token.isArtifact),
+      loot.firstWhere((token) => token.isMajorSecret)
+    ];
     expect(player.canTakeArtifact, false);
-    // TODO: Test other loot doesn't confuse canTakeArtifact.
   });
 
   test('fight monsters', () {
@@ -474,5 +479,21 @@ void main() {
     expect(player.calculateTotalPoints(), 5);
     player.token.location = Space.depths(0, 0);
     expect(player.calculateTotalPoints(), 0);
+  });
+
+  test('picking up an artifact increases dragon rage', () {
+    var game = ClankGame(planners: [MockPlanner(), MockPlanner()]);
+    var player = game.activePlayer;
+    Turn turn = Turn(player: player);
+    turn.boots = 5; // plenty.
+    var artifactRoom = game.board.graph.allSpaces
+        .firstWhere((space) => space.expectedArtifactValue > 0);
+    var edge = artifactRoom.edges.first.end.edges
+        .firstWhere((edge) => edge.end == artifactRoom);
+    expect(player.hasArtifact, false);
+    int initialRage = game.board.rageIndex;
+    game.executeTraverse(turn, Traverse(edge: edge, takeItem: true));
+    expect(player.hasArtifact, true);
+    expect(game.board.rageIndex, initialRage + 1);
   });
 }

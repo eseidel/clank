@@ -32,12 +32,12 @@ class Player {
     loot.add(token);
   }
 
-  bool get hasArtifact => loot.any((token) => token is ArtifactToken);
+  bool get hasArtifact => loot.any((token) => token.isArtifact);
   bool get inGame => status == PlayerStatus.inGame;
 
   bool get canTakeArtifact {
     int artifactCount =
-        loot.fold(0, (sum, token) => sum + ((token is ArtifactToken) ? 1 : 0));
+        loot.fold(0, (sum, token) => sum + (token.isArtifact ? 1 : 0));
     // Allow more artifacts with backpacks.
     int maxArtifacts = 1;
     return artifactCount < maxArtifacts;
@@ -106,6 +106,14 @@ class ClankGame {
     return players[index + 1];
   }
 
+  void executeAcquireLoot(Turn turn, LootToken token) {
+    Player player = turn.player;
+    assert(!token.isArtifact || player.canTakeArtifact);
+    executeAcquireLootEffects(turn, token);
+    print('$player loots $token');
+    player.takeLoot(token);
+  }
+
   void executeTraverse(Turn turn, Traverse action) {
     Edge edge = action.edge;
     turn.boots -= edge.bootsCost;
@@ -121,17 +129,13 @@ class ClankGame {
     if (action.takeItem) {
       assert(player.location.loot.isNotEmpty);
       // What do we do when takeItem is a lie (there are no tokens)?
-      Token token = player.location.loot.first;
-      assert(token is LootToken);
-      LootToken loot = token as LootToken;
-      assert(!(loot is Artifact) || player.canTakeArtifact);
-      print('$player loots $loot');
-      player.takeLoot(loot);
+      var token = player.location.loot.first;
+      executeAcquireLoot(turn, token);
     }
     // TODO: handle keys, exhaustion, etc.
   }
 
-  void executeAcquireEffects(Turn turn, Card card) {
+  void executeAcquireCardEffects(Turn turn, Card card) {
     if (card.type.acquireClank != 0) {
       turn.adjustClank(board, card.type.acquireClank);
     }
@@ -139,6 +143,12 @@ class ClankGame {
     turn.boots += card.type.acquireBoots;
     if (card.type.acquireHearts != 0) {
       board.healDamage(turn.player.color, card.type.acquireHearts);
+    }
+  }
+
+  void executeAcquireLootEffects(Turn turn, LootToken token) {
+    if (token.loot.acquireRage != 0) {
+      board.increaseDragonRage(token.loot.acquireRage);
     }
   }
 
@@ -151,7 +161,7 @@ class ClankGame {
 
     Card card = board.takeCard(cardType);
     turn.player.deck.add(card);
-    executeAcquireEffects(turn, card);
+    executeAcquireCardEffects(turn, card);
     print('${turn.player} buys $card');
   }
 
@@ -336,24 +346,32 @@ class ClankGame {
   }
 
   void placeLootTokens() {
-    List<Space> spacesWithSpecial(Special special) {
-      return board.graph.allSpaces
-          .where((space) => space.special == special)
-          .toList();
-    }
+    Box box = Box();
+    var allTokens = box.makeAllLootTokens().toList();
 
-    // TODO: Implement placeLootTokens.
+    Iterable<Space> spacesWithSpecial(Special special) =>
+        board.graph.allSpaces.where((space) => space.special == special);
+
     // Artifacts (excluding randomly based on player count)
-    var artifactSpaces = spacesWithSpecial(Special.artifact);
-    for (var space in artifactSpaces) {
-      var artifact = Artifact.byValue(space.expectedArtifactValue);
-      var token = ArtifactToken(artifact);
+    var artifacts = allTokens.where((token) => token.isArtifact).toList();
+    for (var space in spacesWithSpecial(Special.artifact)) {
+      var token = artifacts
+          .firstWhere((token) => token.points == space.expectedArtifactValue);
+      assert(token.location == null);
       token.moveTo(space);
     }
     // // Minor Secrets
-    // var minorSecretSpaces = spacesWithSpecial(Special.minorSecret);
+    var minorSecrets = allTokens.where((token) => token.isMinorSecret).toList();
+    minorSecrets.shuffle(_random);
+    for (var space in spacesWithSpecial(Special.minorSecret)) {
+      minorSecrets.removeLast().moveTo(space);
+    }
     // // Major Secrets
-    // var majorSecretSpaces = spacesWithSpecial(Special.majorSecret);
+    var majorSecrets = allTokens.where((token) => token.isMajorSecret).toList();
+    majorSecrets.shuffle(_random);
+    for (var space in spacesWithSpecial(Special.majorSecret)) {
+      majorSecrets.removeLast().moveTo(space);
+    }
     // // Monkey Tokens
     // var monkeyTokenSpaces = spacesWithSpecial(Special.monkeyShrine);
   }
@@ -421,23 +439,89 @@ class Reserve {
   }
 }
 
-enum MinorSecret {
-  potionOfHealing,
-  potionOfSwiftness,
-  potionOfStrength,
-  skillBoost,
-  treasure,
-  magicSpring,
-  dragonEgg,
+// Maybe this just get merged in with Artifact and MarketItem to be Loot?
+enum LootType { majorSecret, minorSecret, artifact }
+
+class Loot {
+  final LootType type;
+  final String name;
+  final int count;
+  final int points;
+  final int hearts;
+  final int gold;
+  final int skill;
+  final int drawCards;
+  final int acquireRage;
+  final int boots;
+  final int swords;
+
+  const Loot.majorSecret({
+    required this.name,
+    required this.count,
+    this.points = 0,
+    this.hearts = 0,
+    this.gold = 0,
+    this.skill = 0,
+    this.drawCards = 0,
+  })  : type = LootType.majorSecret,
+        boots = 0,
+        swords = 0,
+        acquireRage = 0;
+
+  const Loot.minorSecret({
+    required this.name,
+    required this.count,
+    this.points = 0,
+    this.hearts = 0,
+    this.gold = 0,
+    this.skill = 0,
+    this.drawCards = 0,
+    this.acquireRage = 0,
+    this.boots = 0,
+    this.swords = 0,
+  }) : type = LootType.minorSecret;
+
+  const Loot.artifact({
+    required this.name,
+    required this.points,
+  })   : type = LootType.artifact,
+        count = 1,
+        hearts = 0,
+        gold = 0,
+        skill = 0,
+        drawCards = 0,
+        boots = 0,
+        swords = 0,
+        acquireRage = 1;
 }
 
-enum MajorSecret {
-  potionOfGreaterHealing,
-  greaterSkillBoost,
-  greaterTreasure,
-  flashOfBrilliance,
-  challice,
-}
+List<Loot> allLootDescriptions = const [
+  // Major Secrets
+  Loot.majorSecret(name: 'Chalice', count: 3, points: 7),
+  Loot.majorSecret(name: 'Potion of Greater Healing', count: 2, hearts: 2),
+  Loot.majorSecret(name: 'Greater Treasure', count: 2, gold: 5),
+  Loot.majorSecret(name: 'Greater Skill Boost', count: 2, skill: 5),
+  Loot.majorSecret(name: 'Flash of Brilliance', count: 2, drawCards: 3),
+
+  // Minor Secrets
+  Loot.minorSecret(name: 'Dragon Egg', count: 3, points: 3, acquireRage: 1),
+  Loot.minorSecret(name: 'Potion of Healing', count: 3, hearts: 1),
+  Loot.minorSecret(name: 'Treasure', count: 3, gold: 2),
+  Loot.minorSecret(name: 'Skill Boost', count: 3, skill: 2),
+  Loot.minorSecret(name: 'Potion of Strength', count: 2, swords: 2),
+  Loot.minorSecret(name: 'Potion of Swiftness', count: 2, boots: 1),
+  // Don't know how to trash yet.
+  // Loot.minor(name: 'Magic Spring', count: 2, endOfTurnTrash: 1),
+
+  // Artifacts
+  Loot.artifact(name: 'Ring', points: 5),
+  Loot.artifact(name: 'Ankh', points: 7),
+  Loot.artifact(name: 'Vase', points: 10),
+  Loot.artifact(name: 'Bananas', points: 15),
+  Loot.artifact(name: 'Shield', points: 20),
+  Loot.artifact(name: 'Chestplate', points: 25),
+  Loot.artifact(name: 'Thurible', points: 30),
+];
 
 class Box {
   // 7 Artifacts
@@ -464,6 +548,12 @@ class Box {
   // Gold is meant to be unlimited: https://boardgamegeek.com/thread/1729908/article/25115604#25115604
   // - 12 5 gold
   // - 21 1 gold
+
+  Iterable<LootToken> makeAllLootTokens() {
+    return allLootDescriptions
+        .map((loot) => List.generate(loot.count, (_) => LootToken(loot)))
+        .expand((element) => element);
+  }
 }
 
 // Labels for spaces derived from their visual position computed from the
@@ -605,10 +695,8 @@ class Board {
     return ArrivalTriggers(dragonAttacks: newDragon, clankForAll: arrivalClank);
   }
 
-  void increaseDragonRage() {
-    if (rageIndex < rageValues.length - 1) {
-      rageIndex++;
-    }
+  void increaseDragonRage([int amount = 1]) {
+    rageIndex = min(rageIndex + amount, rageValues.length - 1);
   }
 
   int get dragonRageCubeCount => rageValues[rageIndex];
@@ -819,34 +907,16 @@ class Library {
   }
 }
 
-// This could be an enum using one of the enum packages.
-class Artifact {
-  final String name;
-  final int value;
-  const Artifact._(this.name, this.value);
+class LootToken extends Token {
+  Loot loot;
+  LootToken(this.loot);
 
-  factory Artifact.byValue(int desiredValue) {
-    return all.firstWhere((artifact) => artifact.value == desiredValue);
-  }
+  bool get isArtifact => loot.type == LootType.artifact;
+  bool get isMinorSecret => loot.type == LootType.minorSecret;
+  bool get isMajorSecret => loot.type == LootType.majorSecret;
 
-  @override
-  String toString() => '$value:$name';
-
-  static List<Artifact> all = [
-    const Artifact._('Ring', 5),
-    const Artifact._('Ankh', 7),
-    const Artifact._('Vase', 10),
-    const Artifact._('Bananas', 15),
-    const Artifact._('Shield', 20),
-    const Artifact._('Chestplate', 25),
-    const Artifact._('Thurible', 30),
-  ];
-}
-
-class ArtifactToken extends LootToken {
-  Artifact artifact;
-  ArtifactToken(this.artifact) : super(points: artifact.value);
+  int get points => loot.points;
 
   @override
-  String toString() => artifact.toString();
+  String toString() => loot.toString();
 }
