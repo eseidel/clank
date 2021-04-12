@@ -12,16 +12,7 @@ abstract class Planner {
   Future<Action> nextAction(Turn turn, Board board);
 }
 
-class Action {
-  // Enum?
-  // Play a card
-  // Acquire a card (from dungeon row or reserve)
-  // Use a Device
-  // Fight a monster
-  // If in Market, spend gold to buy an item.
-  // Move through a tunnel
-  //    When you move into a room with items you may take one.
-}
+class Action {}
 
 class PlayCard extends Action {
   final CardType cardType;
@@ -30,8 +21,13 @@ class PlayCard extends Action {
 
 class Traverse extends Action {
   final Edge edge;
-  bool takeItem;
-  Traverse({required this.edge, required this.takeItem});
+  final bool takeItem;
+  final int spendHealth;
+  Traverse({required this.edge, required this.takeItem, this.spendHealth = 0}) {
+    assert(spendHealth >= 0);
+    assert(spendHealth <= edge.swordsCost);
+    assert(!takeItem || edge.end.loot.isNotEmpty);
+  }
 }
 
 class Purchase extends Action {
@@ -108,6 +104,12 @@ class Turn {
     return actual;
   }
 
+  int hpAvailableForMonsterTraversals(Board board) {
+    // We can't spend more cubes than we have or available health points.
+    return min(board.playerCubeStashes.countFor(player.color),
+        board.healthForPlayer(player.color) - 1);
+  }
+
   @override
   String toString() {
     return '${skill}sk ${boots}b ${swords}sw -${leftoverClankReduction}c';
@@ -145,28 +147,27 @@ class MockPlanner implements Planner {
   }
 }
 
-class RandomPlanner implements Planner {
-  int? seed;
-  final Random _random;
-  RandomPlanner({this.seed}) : _random = Random(seed);
-  // Evaluating board states?
-  // Clank tokens
-  // Dragon position
-  // Distance to entrance
-  // Distance to artifact(s)
-  // Current score?
-  //
-  // Simplest proxy for board state?
-  // Current expected score = current score + likelyhood of not being zero?
-  // Expected Score ==
+class ActionGenerator {
+  final Turn turn;
+  final Board board;
 
-  Iterable<Traverse> possibleMoves(Turn turn) sync* {
+  ActionGenerator(this.turn, this.board);
+
+  Iterable<PlayCard> possibleCardPlays() {
+    // TODO: This should only return each unique CardType once.
+    return turn.hand.map((card) => PlayCard(card.type));
+  }
+
+  Iterable<Traverse> possibleMoves() sync* {
+    int hpAvailableForTraversal = turn.hpAvailableForMonsterTraversals(board);
     bool haveResourcesFor(Edge edge) {
       if (edge.requiresArtifact && !turn.player.hasArtifact) return false;
       if (turn.usingTeleporter) return true;
       if (edge.requiresKey && !turn.hasKey) return false;
       if (edge.bootsCost > turn.boots) return false;
-      if (edge.swordsCost > turn.swords) return false;
+      if (edge.swordsCost > (turn.swords + hpAvailableForTraversal)) {
+        return false;
+      }
       return true;
     }
 
@@ -175,15 +176,22 @@ class RandomPlanner implements Planner {
       if (!haveResourcesFor(edge)) {
         continue;
       }
-      // TODO: Yield versions which spend hp instead of swords.
       bool hasItem = edge.end.loot.isNotEmpty;
       bool takeItem = hasItem &&
           (edge.end.special != Special.artifact || turn.player.canTakeArtifact);
-      yield Traverse(edge: edge, takeItem: takeItem);
+
+      // Yield one per possible distribution of health vs. swords spend.
+      // For paths with zero swords this executes once with hpSpend = 0.
+      int maxHpSpend = min(hpAvailableForTraversal, edge.swordsCost);
+      int minHpSpend = max(edge.swordsCost - turn.swords, 0);
+      for (int hpSpend = minHpSpend; hpSpend <= maxHpSpend; hpSpend++) {
+        assert(hpSpend + turn.swords >= edge.swordsCost);
+        yield Traverse(edge: edge, takeItem: takeItem, spendHealth: hpSpend);
+      }
     }
   }
 
-  Iterable<Action> possiblePurchases(Turn turn, Board board) sync* {
+  Iterable<Action> possiblePurchases() sync* {
     bool canAffordPurchase(CardType cardType) {
       if (cardType.interaction != Interaction.buy) return false;
       if (cardType.skillCost > turn.skill) return false;
@@ -217,21 +225,38 @@ class RandomPlanner implements Planner {
       }
     }
   }
+}
+
+class RandomPlanner implements Planner {
+  int? seed;
+  final Random _random;
+  RandomPlanner({this.seed}) : _random = Random(seed);
+  // Evaluating board states?
+  // Clank tokens
+  // Dragon position
+  // Distance to entrance
+  // Distance to artifact(s)
+  // Current score?
+  //
+  // Simplest proxy for board state?
+  // Current expected score = current score + likelyhood of not being zero?
+  // Expected Score ==
 
   @override
   Future<Action> nextAction(Turn turn, Board board) async {
-    // If cards in hand, play all those?
-    if (turn.hand.isNotEmpty) {
-      return PlayCard(turn.hand.first.type);
+    ActionGenerator generator = ActionGenerator(turn, board);
+    List<Action> possible = [];
+    possible.addAll(generator.possibleCardPlays());
+    // If cards in hand, play all those first?
+    if (possible.isNotEmpty) {
+      return possible.first;
     }
+    possible.addAll(generator.possibleMoves());
+    possible.addAll(generator.possiblePurchases());
 
-    List<Action> possibleActions = [];
-    possibleActions.addAll(possibleMoves(turn));
-    possibleActions.addAll(possiblePurchases(turn, board));
-
-    if (possibleActions.isNotEmpty) {
-      possibleActions.shuffle(_random);
-      return possibleActions.first;
+    if (possible.isNotEmpty) {
+      possible.shuffle(_random);
+      return possible.first;
     }
 
     return EndTurn();

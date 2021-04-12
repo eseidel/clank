@@ -118,8 +118,10 @@ class ClankGame {
     Edge edge = action.edge;
     turn.boots -= edge.bootsCost;
     assert(turn.boots >= 0);
-    // TODO: This does not consider spending health instead of swords.
-    turn.swords -= edge.swordsCost;
+    if (action.spendHealth > 0) {
+      board.takeDamage(turn.player.color, action.spendHealth);
+    }
+    turn.swords -= (edge.swordsCost - action.spendHealth);
     assert(turn.swords >= 0);
 
     Player player = turn.player;
@@ -269,7 +271,7 @@ class ClankGame {
     if (triggers.dragonAttacks) {
       board.dragonAttack(_random);
     }
-    // ASSERTs do not pass yet!  We're leaking cubes.
+    // TODO: ASSERTs do not pass yet!  We're leaking cubes.
     // board.assertTotalClankCubeCounts();
   }
 
@@ -360,19 +362,19 @@ class ClankGame {
       assert(token.location == null);
       token.moveTo(space);
     }
-    // // Minor Secrets
+    // Minor Secrets
     var minorSecrets = allTokens.where((token) => token.isMinorSecret).toList();
     minorSecrets.shuffle(_random);
     for (var space in spacesWithSpecial(Special.minorSecret)) {
       minorSecrets.removeLast().moveTo(space);
     }
-    // // Major Secrets
+    // Major Secrets
     var majorSecrets = allTokens.where((token) => token.isMajorSecret).toList();
     majorSecrets.shuffle(_random);
     for (var space in spacesWithSpecial(Special.majorSecret)) {
       majorSecrets.removeLast().moveTo(space);
     }
-    // // Monkey Tokens
+    // TODO: Monkey Tokens
     // var monkeyTokenSpaces = spacesWithSpecial(Special.monkeyShrine);
   }
 
@@ -414,11 +416,9 @@ class Reserve {
           library.makeAll('Explore'),
           library.makeAll('Secret Tome'),
         ] {
-    // Goblin
-    // Secret Tome
+    // TODO: Goblin
   }
 
-  // Should this be CardType instead of Card?
   Iterable<CardType> get availableCardTypes sync* {
     for (var pile in piles) {
       if (pile.isNotEmpty) yield pile.first.type;
@@ -654,7 +654,7 @@ class Board {
   static const int dungeonRowMaxSize = 6;
   static const List<int> rageValues = <int>[2, 2, 3, 3, 4, 4, 5];
 
-  int rageIndex = 0; // TODO: Set according to number of players.
+  int rageIndex = 0;
 
   Graph graph = FrontGraphBuilder().build();
   late Reserve reserve;

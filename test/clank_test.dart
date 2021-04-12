@@ -496,4 +496,28 @@ void main() {
     expect(player.hasArtifact, true);
     expect(game.board.rageIndex, initialRage + 1);
   });
+
+  test('consider moves which involve spending health', () {
+    var game = ClankGame(planners: [MockPlanner()]);
+    var board = game.board;
+    var player = game.activePlayer;
+
+    var builder = GraphBuilder();
+    var from = Space.at(0, 0);
+    var to = Space.at(0, 1);
+    builder.connect(from, to, monsters: 2);
+    board.graph = Graph(start: from, allSpaces: [from, to]);
+    player.token.moveTo(from);
+
+    var turn = Turn(player: player);
+    turn.boots = 5; // plenty
+    turn.swords = 1; // Not enough.
+    var generator = ActionGenerator(turn, board);
+    var moves = generator.possibleMoves();
+    expect(moves.length, 2); // spend 1 hp, spend 2 hp.
+    expect(moves.any((move) => move.spendHealth > 0), true);
+
+    // TODO: Can't spend hp if you're almost dead.
+    // TODO: Can't spend hp if you have no cubes to spend.
+  });
 }

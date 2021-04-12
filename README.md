@@ -14,7 +14,6 @@ dart run bin/simulate.dart
 * Crystal Cave exhaustion
 * Many Cards
 * Market
-* Non-Artifact loot
 * Various card effects (trashing, teleport, etc.)
 * Missing "deep" half of map.
 * Spending health for swords to move.
