@@ -140,6 +140,7 @@ class ClankGame {
 
   void executePurchase(Turn turn, Purchase action) {
     CardType cardType = action.cardType;
+    assert(cardType.interaction == Interaction.buy);
     turn.skill -= cardType.skillCost;
     assert(turn.skill >= 0);
     assert(cardType.swordsCost == 0);
@@ -152,6 +153,7 @@ class ClankGame {
 
   void executeFight(Turn turn, Fight action) {
     CardType cardType = action.cardType;
+    assert(cardType.interaction == Interaction.fight);
     turn.swords -= cardType.swordsCost;
     assert(turn.swords >= 0);
     assert(cardType.skillCost == 0);
@@ -189,6 +191,19 @@ class ClankGame {
     turn.player.gold += cardType.gainGold;
   }
 
+  void executeUseDevice(Turn turn, UseDevice action) {
+    CardType cardType = action.cardType;
+    assert(cardType.interaction == Interaction.use);
+    turn.skill -= cardType.skillCost;
+    assert(turn.skill >= 0);
+    assert(cardType.swordsCost == 0);
+
+    Card card = board.takeCard(cardType);
+    board.dungeonDiscard.add(card);
+    executeCardUseEffects(turn, action.cardType);
+    print('${turn.player} used $card');
+  }
+
   void executeAction(Turn turn, Action action) {
     if (action is PlayCard) {
       turn.player.deck.playCard(action.cardType);
@@ -208,6 +223,10 @@ class ClankGame {
     }
     if (action is Fight) {
       executeFight(turn, action);
+      return;
+    }
+    if (action is UseDevice) {
+      executeUseDevice(turn, action);
       return;
     }
     assert(false);

@@ -448,4 +448,18 @@ void main() {
     expect(turn.skill, 1);
     expect(turn.swords, 0);
   });
+
+  test('use device', () {
+    var game = ClankGame(planners: [MockPlanner()]);
+    var player = game.activePlayer;
+    var board = game.board;
+    board.dungeonRow = library.make('Ladder', 1);
+    Turn turn = Turn(player: player);
+    turn.skill = 3;
+    game.executeAction(turn, UseDevice(cardType: board.dungeonRow.first.type));
+    expect(board.dungeonDiscard.length, 1);
+    expect(board.dungeonRow.length, 0);
+    expect(turn.boots, 2);
+    expect(turn.skill, 0);
+  });
 }

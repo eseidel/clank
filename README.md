@@ -13,12 +13,11 @@ dart run bin/simulate.dart
 ## Missing Features
 * Crystal Cave exhaustion
 * Many Cards
-* Devices
-* Combat
 * Market
 * Healing
 * Various card effects (trashing, teleport, etc.)
 * Missing "deep" half of map.
+* Spending health for swords to move.
 
 ## Issues
-* Random planners take 100s of turns to complete game.
+* Most games end w/o escape since random planning just walks around.

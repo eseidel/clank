@@ -50,6 +50,14 @@ class Fight extends Action {
   }
 }
 
+class UseDevice extends Action {
+  final CardType cardType;
+  UseDevice({required this.cardType}) {
+    assert(cardType.skillCost > 0);
+    assert(cardType.swordsCost == 0);
+  }
+}
+
 class EndTurn extends Action {}
 
 // Planner can't modify turn directly?
@@ -176,7 +184,7 @@ class RandomPlanner implements Planner {
   }
 
   Iterable<Action> possiblePurchases(Turn turn, Board board) sync* {
-    bool canAfford(CardType cardType) {
+    bool canAffordPurchase(CardType cardType) {
       if (cardType.interaction != Interaction.buy) return false;
       if (cardType.skillCost > turn.skill) return false;
       return true;
@@ -188,15 +196,24 @@ class RandomPlanner implements Planner {
       return true;
     }
 
+    bool canAffordDevice(CardType cardType) {
+      if (cardType.interaction != Interaction.use) return false;
+      if (cardType.skillCost > turn.skill) return false;
+      return true;
+    }
+
     for (var cardType in board.availableCardTypes) {
       if (!cardUsableAtLocation(cardType, turn.player.location)) {
         continue;
       }
-      if (canAfford(cardType)) {
+      if (canAffordPurchase(cardType)) {
         yield Purchase(cardType: cardType);
       }
       if (canDefeat(cardType)) {
         yield Fight(cardType: cardType);
+      }
+      if (canAffordDevice(cardType)) {
+        yield UseDevice(cardType: cardType);
       }
     }
   }
