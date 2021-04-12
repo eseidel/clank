@@ -296,7 +296,7 @@ void main() {
     Turn turn = Turn(player: game.players.first);
     turn.skill = emerald.skillCost;
     expect(board.clankArea.totalPlayerCubes, 0);
-    game.executeAction(turn, Purchase(cardType: emerald));
+    game.executeAction(turn, AcquireCard(cardType: emerald));
     expect(board.clankArea.totalPlayerCubes, 2);
   });
 
@@ -308,7 +308,7 @@ void main() {
     Turn turn = Turn(player: game.players.first);
     turn.skill = silverSpear.skillCost;
     expect(turn.swords, 0);
-    game.executeAction(turn, Purchase(cardType: silverSpear));
+    game.executeAction(turn, AcquireCard(cardType: silverSpear));
     expect(turn.swords, 1);
   });
 
@@ -320,7 +320,7 @@ void main() {
     Turn turn = Turn(player: game.players.first);
     turn.skill = bootsOfSwiftness.skillCost;
     expect(turn.boots, 0);
-    game.executeAction(turn, Purchase(cardType: bootsOfSwiftness));
+    game.executeAction(turn, AcquireCard(cardType: bootsOfSwiftness));
     expect(turn.boots, 1);
   });
 
@@ -335,14 +335,14 @@ void main() {
     // Does nothing if you haven't taken damage.
     expect(board.damageTakenByPlayer(player.color), 0);
     turn.skill = amuletOfVigor.skillCost;
-    game.executeAction(turn, Purchase(cardType: amuletOfVigor));
+    game.executeAction(turn, AcquireCard(cardType: amuletOfVigor));
     expect(board.damageTakenByPlayer(player.color), 0);
 
     // But heals one on acquire if you have.
     board.takeDamage(player.color, 2);
     expect(board.damageTakenByPlayer(player.color), 2);
     turn.skill = amuletOfVigor.skillCost;
-    game.executeAction(turn, Purchase(cardType: amuletOfVigor));
+    game.executeAction(turn, AcquireCard(cardType: amuletOfVigor));
     expect(board.damageTakenByPlayer(player.color), 1);
   });
 

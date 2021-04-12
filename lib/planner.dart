@@ -30,9 +30,9 @@ class Traverse extends Action {
   }
 }
 
-class Purchase extends Action {
+class AcquireCard extends Action {
   final CardType cardType;
-  Purchase({required this.cardType}) {
+  AcquireCard({required this.cardType}) {
     assert(cardType.skillCost > 0);
     assert(cardType.swordsCost == 0);
   }
@@ -191,8 +191,8 @@ class ActionGenerator {
     }
   }
 
-  Iterable<Action> possiblePurchases() sync* {
-    bool canAffordPurchase(CardType cardType) {
+  Iterable<Action> possibleCardAcquisitions() sync* {
+    bool canAffordAcquireCard(CardType cardType) {
       if (cardType.interaction != Interaction.buy) return false;
       if (cardType.skillCost > turn.skill) return false;
       return true;
@@ -214,8 +214,8 @@ class ActionGenerator {
       if (!cardUsableAtLocation(cardType, turn.player.location)) {
         continue;
       }
-      if (canAffordPurchase(cardType)) {
-        yield Purchase(cardType: cardType);
+      if (canAffordAcquireCard(cardType)) {
+        yield AcquireCard(cardType: cardType);
       }
       if (canDefeat(cardType)) {
         yield Fight(cardType: cardType);
@@ -252,7 +252,7 @@ class RandomPlanner implements Planner {
       return possible.first;
     }
     possible.addAll(generator.possibleMoves());
-    possible.addAll(generator.possiblePurchases());
+    possible.addAll(generator.possibleCardAcquisitions());
 
     if (possible.isNotEmpty) {
       possible.shuffle(_random);

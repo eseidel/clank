@@ -154,7 +154,7 @@ class ClankGame {
     }
   }
 
-  void executePurchase(Turn turn, Purchase action) {
+  void executeAcquireCard(Turn turn, AcquireCard action) {
     CardType cardType = action.cardType;
     assert(cardType.interaction == Interaction.buy);
     turn.skill -= cardType.skillCost;
@@ -233,8 +233,8 @@ class ClankGame {
       executeTraverse(turn, action);
       return;
     }
-    if (action is Purchase) {
-      executePurchase(turn, action);
+    if (action is AcquireCard) {
+      executeAcquireCard(turn, action);
       return;
     }
     if (action is Fight) {
@@ -440,7 +440,12 @@ class Reserve {
 }
 
 // Maybe this just get merged in with Artifact and MarketItem to be Loot?
-enum LootType { majorSecret, minorSecret, artifact }
+enum LootType {
+  majorSecret,
+  minorSecret,
+  artifact,
+  market,
+}
 
 class Loot {
   final LootType type;
@@ -493,6 +498,19 @@ class Loot {
         boots = 0,
         swords = 0,
         acquireRage = 1;
+
+  const Loot.market({
+    required this.name,
+    required this.count,
+    required this.points,
+  })   : type = LootType.market,
+        hearts = 0,
+        gold = 0,
+        skill = 0,
+        drawCards = 0,
+        boots = 0,
+        swords = 0,
+        acquireRage = 0;
 }
 
 List<Loot> allLootDescriptions = const [
@@ -521,6 +539,16 @@ List<Loot> allLootDescriptions = const [
   Loot.artifact(name: 'Shield', points: 20),
   Loot.artifact(name: 'Chestplate', points: 25),
   Loot.artifact(name: 'Thurible', points: 30),
+
+  // Market -- unclear if these belong as Loot?
+  // They never have a location on the board.
+  // They never use any of the effects secrets do.
+  // But they do get counted for points (and physically manifest as tokens).
+  Loot.market(name: 'Master Key', count: 2, points: 5),
+  Loot.market(name: 'Backpack', count: 2, points: 5),
+  Loot.market(name: 'Crown (10)', count: 1, points: 10),
+  Loot.market(name: 'Crown (9)', count: 1, points: 9),
+  Loot.market(name: 'Crown (8)', count: 1, points: 8),
 ];
 
 class Box {
@@ -555,14 +583,6 @@ class Box {
         .expand((element) => element);
   }
 }
-
-// Labels for spaces derived from their visual position computed from the
-// upper-level corner (where the start space is). Start space would be (-1, 0).
-// class Coord {
-//   final int row;
-//   final int column;
-//   Coord(this.row, this.column);
-// }
 
 enum PlayerColor {
   red,
