@@ -9,7 +9,7 @@ void main() async {
     turnCount++;
   }
   for (var player in game.players) {
-    print('$player got ${player.calculateTotalPoints()} ${player.status}');
+    print('$player got ${game.pointsForPlayer(player)} ${player.status}');
   }
   print('Game complete in ($turnCount turns)!');
 }

@@ -431,8 +431,7 @@ void main() {
     var game = ClankGame(planners: [MockPlanner()]);
     var player = game.activePlayer;
     expect(player.canTakeArtifact, true);
-    Box box = Box();
-    var loot = box.makeAllLootTokens();
+    var loot = game.box.makeAllLootTokens();
     // Previously only the loot item determined if had an artifact. :/
     player.loot = [
       loot.firstWhere((token) => token.isArtifact),
@@ -472,13 +471,13 @@ void main() {
   test('zero score if knocked out in depths', () {
     var game = ClankGame(planners: [MockPlanner()]);
     var player = game.activePlayer;
-    expect(player.calculateTotalPoints(), 0);
+    expect(game.pointsForPlayer(player), 0);
     player.gold = 5;
-    expect(player.calculateTotalPoints(), 5);
+    expect(game.pointsForPlayer(player), 5);
     player.status = PlayerStatus.knockedOut;
-    expect(player.calculateTotalPoints(), 5);
+    expect(game.pointsForPlayer(player), 5);
     player.token.location = Space.depths(0, 0);
-    expect(player.calculateTotalPoints(), 0);
+    expect(game.pointsForPlayer(player), 0);
   });
 
   test('picking up an artifact increases dragon rage', () {
@@ -567,7 +566,7 @@ void main() {
   test('using items', () {
     var game = ClankGame(planners: [MockPlanner()]);
     var player = game.activePlayer;
-    var allItems = Box().makeAllLootTokens();
+    var allItems = game.box.makeAllLootTokens();
     Turn turn = Turn(player: player);
     void addItemAndUse(String name) {
       var item = allItems.firstWhere((item) => item.loot.name == name);
@@ -597,5 +596,104 @@ void main() {
     expect(turn.boots, 1);
     expect(player.loot, isEmpty);
     expect(game.board.usedItems.length, 9);
+  });
+
+  test('conditional points effects', () {
+    var game = ClankGame(planners: [MockPlanner()]);
+    var player = game.activePlayer;
+    var allLoot = game.box.makeAllLootTokens();
+
+    void addCard(String name) {
+      var card = library.make(name, 1).first;
+      player.deck.hand.add(card);
+    }
+
+    void addLoot(String name) {
+      var newLoot = allLoot.firstWhere((loot) => loot.loot.name == name);
+      player.loot.add(newLoot);
+    }
+
+    expect(game.pointsForPlayer(player), 0);
+    addCard('Secret Tome');
+    expect(game.pointsForPlayer(player), 7);
+    addCard('Wizard');
+    expect(game.pointsForPlayer(player), 9);
+    addCard('Secret Tome');
+    expect(game.pointsForPlayer(player), 18);
+
+    addCard("Dragon's Eye");
+    expect(game.pointsForPlayer(player), 18);
+    addLoot('Mastery Token');
+    expect(game.pointsForPlayer(player), 48);
+
+    addCard('The Duke');
+    expect(game.pointsForPlayer(player), 48);
+    player.gold = 5;
+    expect(game.pointsForPlayer(player), 54);
+    player.gold = 7;
+    expect(game.pointsForPlayer(player), 56);
+    player.gold = 10;
+    expect(game.pointsForPlayer(player), 60);
+  });
+
+  test('conditional points dwarven peddler', () {
+    var game = ClankGame(planners: [MockPlanner()]);
+    var player = game.activePlayer;
+    var allLoot = game.box.makeAllLootTokens();
+
+    void addCard(String name) {
+      var card = library.make(name, 1).first;
+      player.deck.hand.add(card);
+    }
+
+    void addLoot(String name) {
+      var newLoot = allLoot.firstWhere((loot) => loot.loot.name == name);
+      player.loot.add(newLoot);
+    }
+
+    expect(game.pointsForPlayer(player), 0);
+    addCard('Dwarven Peddler');
+    addLoot('Chalice');
+    expect(game.pointsForPlayer(player), 7);
+    addLoot('Dragon Egg');
+    expect(game.pointsForPlayer(player), 14);
+
+    player.loot = [];
+    expect(game.pointsForPlayer(player), 0);
+    addLoot('Dragon Egg');
+    expect(game.pointsForPlayer(player), 3);
+    addLoot('Monkey Idol');
+    expect(game.pointsForPlayer(player), 12);
+
+    player.loot = [];
+    expect(game.pointsForPlayer(player), 0);
+    addLoot('Chalice');
+    expect(game.pointsForPlayer(player), 7);
+    addLoot('Monkey Idol');
+    expect(game.pointsForPlayer(player), 16);
+  });
+
+  test('Exiting dungeon awards mastery token', () {
+    var game = ClankGame(planners: [MockPlanner()]);
+    var board = game.board;
+    var player = game.activePlayer;
+    var allLoot = game.box.makeAllLootTokens();
+    // Move to right next to the start.
+    var goal = board.graph.start;
+    var nextToGoal = goal.edges.first.end;
+    player.token.moveTo(nextToGoal);
+    player.loot.add(allLoot.firstWhere((token) => token.points == 30));
+    expect(player.hasArtifact, isTrue);
+    var edge = nextToGoal.edges.firstWhere((edge) => edge.end == goal);
+    Turn turn = Turn(player: player);
+    turn.boots = 1;
+    // Regardless of takeItem, a Mastery Token is awarded.
+    game.executeTraverse(turn, Traverse(edge: edge, takeItem: false));
+    player.hasLoot(game.box.lootByName('Mastery Token'));
+    expect(game.pointsForPlayer(player), 50); // 30 + 20 for token.
+    game.updatePlayerStatuses();
+    // Previously points depended on inGame status, ensure it doesn't:
+    expect(game.pointsForPlayer(player), 50);
+    expect(player.inGame, isFalse);
   });
 }

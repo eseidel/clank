@@ -70,17 +70,42 @@ class Player {
     return false;
   }
 
-  int calculateTotalPoints() {
+  bool hasCard(CardType cardType) {
+    for (var card in deck.allCards) {
+      if (card.type == cardType) return true;
+    }
+    return false;
+  }
+
+  int countOfCards(CardType cardType) {
+    return deck.allCards
+        .fold(0, (sum, card) => sum + (card.type == cardType ? 1 : 0));
+  }
+
+  bool hasLoot(Loot lootType) {
+    for (var lootToken in loot) {
+      if (lootToken.loot == lootType) return true;
+    }
+    return false;
+  }
+
+  int calculateTotalPoints(Box box, Library library) {
     // Zero score if you get knocked out while still in the depths.
     if (status == PlayerStatus.knockedOut && location.inDepths) {
       return 0;
     }
     int total = 0;
-    total += deck.calculateTotalPoints();
+    var conditions = PointsConditions(
+      gold: gold,
+      secretTomeCount: countOfCards(library.cardTypeByName('Secret Tome')),
+      hasMasteryToken: hasLoot(box.lootByName('Mastery Token')),
+      hasChalice: hasLoot(box.lootByName('Chalice')),
+      hasDragonEgg: hasLoot(box.lootByName('Dragon Egg')),
+      hasMonkeyIdol: hasLoot(box.lootByName('Monkey Idol')),
+    );
+    total += deck.calculateTotalPoints(conditions);
     total += loot.fold(0, (sum, loot) => sum + loot.points);
     total += gold;
-    // Mastery token bonus for escaping.
-    total += status == PlayerStatus.escaped ? 20 : 0;
     return total;
   }
 
@@ -89,9 +114,11 @@ class Player {
 }
 
 class ClankGame {
-  final List<Player> players;
+  late List<Player> players;
   late Player activePlayer;
   late Board board;
+  late Box box = Box();
+  final Library library = Library();
   int? seed;
   final Random _random;
   bool isComplete = false;
@@ -99,11 +126,11 @@ class ClankGame {
   int countdownTrackIndex = 0;
 
   ClankGame({required List<Planner> planners, this.seed})
-      : players = planners
-            .map((connection) =>
-                Player(planner: connection, deck: createStarterDeck()))
-            .toList(),
-        _random = Random(seed) {
+      : _random = Random(seed) {
+    players = planners
+        .map((planner) =>
+            Player(planner: planner, deck: createStarterDeck(library)))
+        .toList();
     activePlayer = players.first;
     setup();
   }
@@ -122,6 +149,26 @@ class ClankGame {
     player.takeLoot(token);
   }
 
+  void executeRoomEntryEffects(Turn turn, Traverse action) {
+    // TODO: Other move-entry effects (like crystal cave).
+    // print('$player moved: ${edge.end}');
+    var player = turn.player;
+
+    // Special effect of exiting with an artifact.
+    if (action.edge.end == board.graph.start) {
+      assert(turn.player.hasArtifact);
+      // A bit of a hack to construct a Mastery Token manually.
+      player.loot.add(LootToken(box.lootByName('Mastery Token')));
+    }
+
+    if (action.takeItem) {
+      assert(player.location.loot.isNotEmpty);
+      // What do we do when takeItem is a lie (there are no tokens)?
+      var token = player.location.loot.first;
+      executeAcquireLoot(turn, token);
+    }
+  }
+
   void executeTraverse(Turn turn, Traverse action) {
     Edge edge = action.edge;
     turn.boots -= edge.bootsCost;
@@ -134,14 +181,7 @@ class ClankGame {
 
     Player player = turn.player;
     player.token.moveTo(edge.end);
-    // TODO: Other move-entry effects (like crystal cave).
-    // print('$player moved: ${edge.end}');
-    if (action.takeItem) {
-      assert(player.location.loot.isNotEmpty);
-      // What do we do when takeItem is a lie (there are no tokens)?
-      var token = player.location.loot.first;
-      executeAcquireLoot(turn, token);
-    }
+    executeRoomEntryEffects(turn, action);
     // TODO: handle keys, exhaustion, etc.
   }
 
@@ -299,12 +339,14 @@ class ClankGame {
     // You must play all cards
     assert(turn.hand.isEmpty);
     activePlayer.deck.discardPlayAreaAndDrawNewHand(_random);
+
     // Refill the dungeon row
     ArrivalTriggers triggers = board.refillDungeonRow();
     if (triggers.clankForAll != 0) {
       addClankForAll(turn, triggers.clankForAll);
     }
     // Triggers happen before dragon attacks.
+    // https://boardgamegeek.com/thread/2380191/article/34177411#34177411
     if (triggers.dragonAttacks) {
       board.dragonAttack(_random);
     }
@@ -327,6 +369,7 @@ class ClankGame {
       return;
     }
     int additionalCubes = [0, 1, 2, 3][countdownTrackIndex];
+    // FAQ: extra cubes marked on the countdown track apply only to those attacks
     board.dragonAttack(_random, additionalCubes: additionalCubes);
   }
 
@@ -373,8 +416,11 @@ class ClankGame {
     return !players.any((player) => player.status == PlayerStatus.inGame);
   }
 
-  static PlayerDeck createStarterDeck() {
-    var library = Library();
+  int pointsForPlayer(Player player) {
+    return player.calculateTotalPoints(box, library);
+  }
+
+  static PlayerDeck createStarterDeck(Library library) {
     PlayerDeck deck = PlayerDeck();
     deck.addAll(library.make('Burgle', 6));
     deck.addAll(library.make('Stumble', 2));
@@ -384,7 +430,6 @@ class ClankGame {
   }
 
   void placeLootTokens() {
-    Box box = Box();
     var allTokens = box.makeAllLootTokens().toList();
 
     Iterable<Space> spacesWithSpecial(Special special) =>
@@ -434,7 +479,6 @@ class ClankGame {
     }
     placeLootTokens();
     // Fill reserve.
-    Library library = Library();
     board.reserve = Reserve(library);
 
     board.dungeonDeck = library.makeDungeonDeck().toList();
@@ -480,6 +524,7 @@ enum LootType {
   minorSecret,
   artifact,
   market,
+  special,
 }
 
 class Loot {
@@ -555,6 +600,20 @@ class Loot {
         usable = false,
         acquireRage = 0;
 
+  const Loot.special({
+    required this.name,
+    required this.count,
+    required this.points,
+  })   : type = LootType.special,
+        hearts = 0,
+        gold = 0,
+        skill = 0,
+        drawCards = 0,
+        boots = 0,
+        swords = 0,
+        usable = false,
+        acquireRage = 0;
+
   @override
   String toString() => name;
 }
@@ -601,8 +660,12 @@ List<Loot> allLootDescriptions = const [
   Loot.market(name: 'Crown (10)', count: 1, points: 10),
   Loot.market(name: 'Crown (9)', count: 1, points: 9),
   Loot.market(name: 'Crown (8)', count: 1, points: 8),
+
+  Loot.special(name: 'Mastery Token', count: 4, points: 20),
+  Loot.special(name: 'Monkey Idol', count: 3, points: 5),
 ];
 
+// TODO: Merge this with library?
 class Box {
   // 7 Artifacts
   // 11 major secrets
@@ -634,6 +697,9 @@ class Box {
         .map((loot) => List.generate(loot.count, (_) => LootToken(loot)))
         .expand((element) => element);
   }
+
+  Loot lootByName(String name) =>
+      allLootDescriptions.firstWhere((type) => type.name == name);
 }
 
 enum PlayerColor {
@@ -831,6 +897,7 @@ class Board {
   }
 
   void dragonAttack(Random random, {int additionalCubes = 0}) {
+    // FAQ: Players can be damaged regardless of location (e.g. still at flag).
     moveDragonAreaToBag();
     int numberOfCubes = cubeCountForNormalDragonAttack() + additionalCubes;
     print('DRAGON ATTACK ($numberOfCubes cubes)');
@@ -936,8 +1003,15 @@ class PlayerDeck {
     return drawCards(random, count);
   }
 
-  int calculateTotalPoints() {
-    return allCards.fold(0, (sum, card) => sum + card.points);
+  int calculateTotalPoints(PointsConditions conditions) {
+    int total = 0;
+    for (var card in allCards) {
+      total += card.points;
+      if (card.type.pointsEffect != PointsEffect.none) {
+        total += conditionalPointsFor(card.type, conditions);
+      }
+    }
+    return total;
   }
 }
 

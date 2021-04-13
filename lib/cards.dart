@@ -4,6 +4,7 @@ enum CardSet {
   dungeon,
 }
 
+// Could be subtype instead?
 enum Interaction {
   fight, // monster
   use, // device
@@ -15,6 +16,14 @@ enum Location {
   crystalCave,
   deep,
 }
+
+// enum CardSubType {
+//   none,
+//   companion,
+//   gem,
+//   device,
+//   monster,
+// }
 
 class CardType {
   final String name;
@@ -33,7 +42,7 @@ class CardType {
 
   final bool dragon;
   final bool danger;
-  final bool companion;
+  final bool companion; // Should be subtype instead.
   final Location location;
 
   final int arriveClank;
@@ -46,8 +55,9 @@ class CardType {
   final int count;
   final int drawCards;
   final int gainGold;
-  final PlayEffect effect;
-  final Interaction interaction;
+  final PlayEffect playEffect;
+  final PointsEffect pointsEffect;
+  final Interaction interaction; // Could be subtype instead?
 
   final bool neverDiscards; // Special just for Goblin.
 
@@ -74,7 +84,8 @@ class CardType {
     this.drawCards = 0,
     this.gainGold = 0,
     this.othersClank = 0,
-    this.effect = PlayEffect.none,
+    this.playEffect = PlayEffect.none,
+    this.pointsEffect = PointsEffect.none,
     required this.count,
     this.neverDiscards = false,
   }) : interaction = (isDevice)
@@ -87,6 +98,49 @@ class CardType {
 
 enum PlayEffect {
   none,
+}
+
+enum PointsEffect {
+  none,
+  tenIfMasteryToken,
+  onePerFiveGold,
+  fourIfTwoUniqueChaliceEggOrIdol,
+  twoPerSecretTome,
+}
+
+class PointsConditions {
+  final int gold;
+  final bool hasMonkeyIdol;
+  final bool hasDragonEgg;
+  final bool hasChalice;
+  final int secretTomeCount;
+  final bool hasMasteryToken;
+  PointsConditions(
+      {required this.gold,
+      required this.hasDragonEgg,
+      required this.hasChalice,
+      required this.hasMasteryToken,
+      required this.hasMonkeyIdol,
+      required this.secretTomeCount});
+}
+
+int conditionalPointsFor(CardType type, PointsConditions conditions) {
+  switch (type.pointsEffect) {
+    case PointsEffect.fourIfTwoUniqueChaliceEggOrIdol:
+      int toInt(bool boolean) => boolean ? 1 : 0;
+      int uniqueSecretCount = toInt(conditions.hasMonkeyIdol) +
+          toInt(conditions.hasChalice) +
+          toInt(conditions.hasDragonEgg);
+      return uniqueSecretCount >= 2 ? 4 : 0;
+    case PointsEffect.onePerFiveGold:
+      return conditions.gold ~/ 5;
+    case PointsEffect.tenIfMasteryToken:
+      return conditions.hasMasteryToken ? 10 : 0;
+    case PointsEffect.twoPerSecretTome:
+      return conditions.secretTomeCount * 2;
+    case PointsEffect.none:
+      throw ArgumentError('No need to call conditional points');
+  }
 }
 
 const List<CardType> baseSetAllCardTypes = [
@@ -338,6 +392,47 @@ const List<CardType> baseSetAllCardTypes = [
     boots: 3,
     acquireBoots: 1,
     skillCost: 5,
+  ),
+  CardType(
+    name: 'Wizard',
+    set: CardSet.dungeon,
+    companion: true,
+    count: 1,
+    pointsEffect: PointsEffect.twoPerSecretTome,
+    skill: 3,
+    skillCost: 6,
+  ),
+  CardType(
+    name: "Dragon's Eye",
+    set: CardSet.dungeon,
+    count: 1,
+    // TODO: Gem
+    pointsEffect: PointsEffect.tenIfMasteryToken,
+    location: Location.deep,
+    dragon: true,
+    drawCards: 1,
+    acquireClank: 2,
+    skillCost: 5,
+  ),
+  CardType(
+    name: 'The Duke',
+    set: CardSet.dungeon,
+    companion: true,
+    count: 1,
+    pointsEffect: PointsEffect.onePerFiveGold,
+    skill: 2,
+    swords: 2,
+    skillCost: 5,
+  ),
+  CardType(
+    name: 'Dwarven Peddler',
+    set: CardSet.dungeon,
+    companion: true,
+    count: 1,
+    pointsEffect: PointsEffect.fourIfTwoUniqueChaliceEggOrIdol,
+    boots: 1,
+    gainGold: 2,
+    skillCost: 4,
   ),
 
   // Monsters
