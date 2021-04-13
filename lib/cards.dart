@@ -31,6 +31,9 @@ class CardType {
   final int skill;
   final int boots;
   final int swords;
+  // No card provides more than one teleport credit, but since you can
+  // accumulate more than one per turn, we use an int here.
+  final int teleports;
 
   final int clank;
   final int points;
@@ -83,11 +86,25 @@ class CardType {
     this.drawCards = 0,
     this.gainGold = 0,
     this.othersClank = 0,
+    this.teleports = 0,
     this.playEffect = PlayEffect.none,
     this.pointsEffect = PointsEffect.none,
     this.subtype = CardSubType.none,
     this.neverDiscards = false,
-  });
+  })  : assert(skill >= 0),
+        assert(boots >= 0),
+        assert(swords >= 0),
+        assert(skillCost >= 0),
+        assert(swordsCost >= 0),
+        assert(points >= 0),
+        assert(arriveClank >= 0),
+        assert(acquireBoots >= 0),
+        assert(acquireClank >= 0),
+        assert(acquireHearts >= 0),
+        assert(acquireSwords >= 0),
+        assert(drawCards >= 0),
+        assert(gainGold >= 0),
+        assert(teleports >= 0);
 
   Interaction get interaction {
     if (subtype == CardSubType.device) return Interaction.use;
@@ -446,6 +463,16 @@ const List<CardType> baseSetAllCardTypes = [
     gainGold: 2,
     skillCost: 4,
   ),
+  CardType(
+    name: 'Invoker of the Ancients',
+    set: CardSet.dungeon,
+    subtype: CardSubType.companion,
+    count: 1,
+    points: 1,
+    clank: 1,
+    teleports: 1,
+    skillCost: 4,
+  ),
 
   // Monsters
   CardType(
@@ -563,5 +590,13 @@ const List<CardType> baseSetAllCardTypes = [
     gainGold: 5,
     clank: 3,
     skillCost: 3,
+  ),
+  CardType(
+    name: 'Teleporter',
+    set: CardSet.dungeon,
+    subtype: CardSubType.device,
+    count: 2,
+    teleports: 1,
+    skillCost: 4,
   ),
 ];

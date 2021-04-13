@@ -696,4 +696,27 @@ void main() {
     expect(game.pointsForPlayer(player), 50);
     expect(player.inGame, isFalse);
   });
+
+  test('teleport', () {
+    var game = ClankGame(planners: [MockPlanner()]);
+    var player = game.activePlayer;
+    var board = game.board;
+    board.dungeonRow = library.make('Teleporter', 1);
+    Turn turn = Turn(player: player);
+    turn.skill = 4;
+    turn.boots = 3;
+    expect(turn.teleports, 0);
+    // Test use-device teleports
+    game.executeAction(turn, UseDevice(cardType: board.dungeonRow.first.type));
+    expect(turn.teleports, 1);
+    // Play card teleports work too
+    addAndPlayCard(game, turn, 'Invoker of the Ancients');
+    expect(turn.teleports, 2);
+
+    var edge = player.location.edges.first;
+    game.executeTraverse(
+        turn, Traverse(edge: edge, takeItem: false, useTeleport: true));
+    expect(turn.teleports, 1);
+    expect(turn.boots, 3);
+  });
 }

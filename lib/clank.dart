@@ -171,13 +171,18 @@ class ClankGame {
 
   void executeTraverse(Turn turn, Traverse action) {
     Edge edge = action.edge;
-    turn.boots -= edge.bootsCost;
-    assert(turn.boots >= 0);
-    if (action.spendHealth > 0) {
-      board.takeDamage(turn.player.color, action.spendHealth);
+    if (action.useTeleport) {
+      turn.teleports -= 1;
+      assert(turn.teleports >= 0);
+    } else {
+      turn.boots -= edge.bootsCost;
+      assert(turn.boots >= 0);
+      if (action.spendHealth > 0) {
+        board.takeDamage(turn.player.color, action.spendHealth);
+      }
+      turn.swords -= (edge.swordsCost - action.spendHealth);
+      assert(turn.swords >= 0);
     }
-    turn.swords -= (edge.swordsCost - action.spendHealth);
-    assert(turn.swords >= 0);
 
     Player player = turn.player;
     player.token.moveTo(edge.end);
@@ -242,7 +247,7 @@ class ClankGame {
   // Used by both PlayCard and Fight.
   void executeCardUseEffects(Turn turn, CardType cardType) {
     assert(cardUsableAtLocation(cardType, turn.player.location));
-    turn.addUseEffectsFromCard(cardType);
+    turn.addTurnResourcesFromCard(cardType);
     if (cardType.clank != 0) {
       turn.adjustClank(board, cardType.clank);
     }

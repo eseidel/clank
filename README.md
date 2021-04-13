@@ -22,12 +22,10 @@ dart run bin/simulate.dart
 
 ## Missing Features/Cards
 
-### Traverse Effects / Teleport
+### Traverse Effects
 Flying Carpet
 Dead Run
-Invoker of the Ancients
 Wand of Recall
-Teleporter
 
 ### Or Effects
 Wand of Wind (Also teleport)
@@ -62,9 +60,6 @@ FAQ (2019):
 
 Says "slight of hand" as last card doesn't generate drawing.
 https://d19y2ttatozxjp.cloudfront.net/assets/clank/Clank_FAQ.pdf
-
-Teleport is not immediate:
-https://boardgamegeek.com/thread/1654963/article/23962792#23962792
 
 You don't "make clank" if you can't push cubes:
 https://boardgamegeek.com/thread/1668384/article/24171648#24171648

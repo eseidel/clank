@@ -23,10 +23,16 @@ class Traverse extends Action {
   final Edge edge;
   final bool takeItem;
   final int spendHealth;
-  Traverse({required this.edge, required this.takeItem, this.spendHealth = 0}) {
+  final bool useTeleport;
+  Traverse(
+      {required this.edge,
+      required this.takeItem,
+      this.spendHealth = 0,
+      this.useTeleport = false}) {
     assert(spendHealth >= 0);
     assert(spendHealth <= edge.swordsCost);
     assert(!takeItem || edge.end.loot.isNotEmpty);
+    assert(!useTeleport || spendHealth == 0);
   }
 }
 
@@ -67,6 +73,9 @@ class Turn {
   int skill = 0;
   int boots = 0;
   int swords = 0;
+  // Teleport is not immediate, and can be accumulated between cards:
+  // https://boardgamegeek.com/thread/1654963/article/23962792#23962792
+  int teleports = 0;
   int leftoverClankReduction = 0; // always negative
   Turn({required this.player});
 
@@ -75,10 +84,11 @@ class Turn {
   bool usingTeleporter = false;
   bool hasKey = false;
 
-  void addUseEffectsFromCard(CardType cardType) {
+  void addTurnResourcesFromCard(CardType cardType) {
     skill += cardType.skill;
     boots += cardType.boots;
     swords += cardType.swords;
+    teleports += cardType.teleports;
   }
   // Player, starting location, other state?
   // Current resources
@@ -165,9 +175,9 @@ class ActionGenerator {
 
   Iterable<Traverse> possibleMoves() sync* {
     int hpAvailableForTraversal = turn.hpAvailableForMonsterTraversals(board);
-    bool haveResourcesFor(Edge edge) {
+    bool haveResourcesFor(Edge edge, {required bool useTeleport}) {
       if (edge.requiresArtifact && !turn.player.hasArtifact) return false;
-      if (turn.usingTeleporter) return true;
+      if (useTeleport) return true;
       if (edge.requiresKey && !turn.hasKey) return false;
       if (edge.bootsCost > turn.boots) return false;
       if (edge.swordsCost > (turn.swords + hpAvailableForTraversal)) {
@@ -176,22 +186,32 @@ class ActionGenerator {
       return true;
     }
 
+    bool canTakeItemIn(Space end) {
+      bool hasItem = end.loot.isNotEmpty;
+      return hasItem &&
+          (end.special != Special.artifact || turn.player.canTakeArtifact);
+    }
+
     Space current = turn.player.token.location!;
     for (var edge in current.edges) {
-      if (!haveResourcesFor(edge)) {
-        continue;
+      bool haveTeleports = turn.teleports > 0;
+      if (haveTeleports && haveResourcesFor(edge, useTeleport: haveTeleports)) {
+        yield Traverse(
+            edge: edge, takeItem: canTakeItemIn(edge.end), useTeleport: true);
       }
-      bool hasItem = edge.end.loot.isNotEmpty;
-      bool takeItem = hasItem &&
-          (edge.end.special != Special.artifact || turn.player.canTakeArtifact);
 
-      // Yield one per possible distribution of health vs. swords spend.
-      // For paths with zero swords this executes once with hpSpend = 0.
-      int maxHpSpend = min(hpAvailableForTraversal, edge.swordsCost);
-      int minHpSpend = max(edge.swordsCost - turn.swords, 0);
-      for (int hpSpend = minHpSpend; hpSpend <= maxHpSpend; hpSpend++) {
-        assert(hpSpend + turn.swords >= edge.swordsCost);
-        yield Traverse(edge: edge, takeItem: takeItem, spendHealth: hpSpend);
+      if (haveResourcesFor(edge, useTeleport: false)) {
+        // Yield one per possible distribution of health vs. swords spend.
+        // For paths with zero swords this executes once with hpSpend = 0.
+        int maxHpSpend = min(hpAvailableForTraversal, edge.swordsCost);
+        int minHpSpend = max(edge.swordsCost - turn.swords, 0);
+        for (int hpSpend = minHpSpend; hpSpend <= maxHpSpend; hpSpend++) {
+          assert(hpSpend + turn.swords >= edge.swordsCost);
+          yield Traverse(
+              edge: edge,
+              takeItem: canTakeItemIn(edge.end),
+              spendHealth: hpSpend);
+        }
       }
     }
   }
