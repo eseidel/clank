@@ -58,7 +58,7 @@ class CardType {
   final int drawCards;
   final int gainGold;
   final PlayEffect playEffect;
-  final PointsEffect pointsEffect;
+  final ConditionalPoints? pointsCondition;
   final CardSubType subtype;
 
   final bool neverDiscards; // Special just for Goblin.
@@ -88,7 +88,7 @@ class CardType {
     this.othersClank = 0,
     this.teleports = 0,
     this.playEffect = PlayEffect.none,
-    this.pointsEffect = PointsEffect.none,
+    this.pointsCondition,
     this.subtype = CardSubType.none,
     this.neverDiscards = false,
   })  : assert(skill >= 0),
@@ -125,13 +125,7 @@ enum PlayEffect {
   none,
 }
 
-enum PointsEffect {
-  none,
-  tenIfMasteryToken,
-  onePerFiveGold,
-  fourIfTwoUniqueChaliceEggOrIdol,
-  twoPerSecretTome,
-}
+typedef ConditionalPoints = int Function(PointsConditions conditions);
 
 class PointsConditions {
   final int gold;
@@ -147,25 +141,22 @@ class PointsConditions {
       required this.hasMasteryToken,
       required this.hasMonkeyIdol,
       required this.secretTomeCount});
-}
 
-int conditionalPointsFor(CardType type, PointsConditions conditions) {
-  switch (type.pointsEffect) {
-    case PointsEffect.fourIfTwoUniqueChaliceEggOrIdol:
-      int toInt(bool boolean) => boolean ? 1 : 0;
-      int uniqueSecretCount = toInt(conditions.hasMonkeyIdol) +
-          toInt(conditions.hasChalice) +
-          toInt(conditions.hasDragonEgg);
-      return uniqueSecretCount >= 2 ? 4 : 0;
-    case PointsEffect.onePerFiveGold:
-      return conditions.gold ~/ 5;
-    case PointsEffect.tenIfMasteryToken:
-      return conditions.hasMasteryToken ? 10 : 0;
-    case PointsEffect.twoPerSecretTome:
-      return conditions.secretTomeCount * 2;
-    case PointsEffect.none:
-      throw ArgumentError('No need to call conditional points');
+  // These cannot just be lambdas on the CardType since function literals are
+  // not const yet: https://github.com/dart-lang/language/issues/1048
+  static int dwarvenPeddler(PointsConditions conditions) {
+    int toInt(bool boolean) => boolean ? 1 : 0;
+    int uniqueSecretCount = toInt(conditions.hasMonkeyIdol) +
+        toInt(conditions.hasChalice) +
+        toInt(conditions.hasDragonEgg);
+    return uniqueSecretCount >= 2 ? 4 : 0;
   }
+
+  static int theDuke(PointsConditions conditions) => conditions.gold ~/ 5;
+  static int dragonsEye(PointsConditions conditions) =>
+      conditions.hasMasteryToken ? 10 : 0;
+  static int wizard(PointsConditions conditions) =>
+      conditions.secretTomeCount * 2;
 }
 
 const List<CardType> baseSetAllCardTypes = [
@@ -427,7 +418,7 @@ const List<CardType> baseSetAllCardTypes = [
     set: CardSet.dungeon,
     subtype: CardSubType.companion,
     count: 1,
-    pointsEffect: PointsEffect.twoPerSecretTome,
+    pointsCondition: PointsConditions.wizard,
     skill: 3,
     skillCost: 6,
   ),
@@ -436,7 +427,7 @@ const List<CardType> baseSetAllCardTypes = [
     set: CardSet.dungeon,
     count: 1,
     subtype: CardSubType.gem,
-    pointsEffect: PointsEffect.tenIfMasteryToken,
+    pointsCondition: PointsConditions.dragonsEye,
     location: Location.deep,
     dragon: true,
     drawCards: 1,
@@ -448,7 +439,7 @@ const List<CardType> baseSetAllCardTypes = [
     set: CardSet.dungeon,
     subtype: CardSubType.companion,
     count: 1,
-    pointsEffect: PointsEffect.onePerFiveGold,
+    pointsCondition: PointsConditions.theDuke,
     skill: 2,
     swords: 2,
     skillCost: 5,
@@ -458,7 +449,7 @@ const List<CardType> baseSetAllCardTypes = [
     set: CardSet.dungeon,
     subtype: CardSubType.companion,
     count: 1,
-    pointsEffect: PointsEffect.fourIfTwoUniqueChaliceEggOrIdol,
+    pointsCondition: PointsConditions.dwarvenPeddler,
     boots: 1,
     gainGold: 2,
     skillCost: 4,

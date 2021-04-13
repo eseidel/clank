@@ -25,7 +25,17 @@ dart run bin/simulate.dart
 ### Traverse Effects
 Flying Carpet
 Dead Run
+
+### Once-Triggered Effects
 Wand of Recall
+Archeologist
+Kobold Merchant
+The Mountain King
+Rebel Captain
+Rebel Scout
+Rebel Soldier
+Rebel Miner
+Queen of Hearts
 
 ### Or Effects
 Wand of Wind (Also teleport)
@@ -40,16 +50,8 @@ Sleight of Hand
 Treasure Hunter
 Master Burglar (Not really any choice, just a limited Magic Spring?)
 
-### Effect ordering / Conditional effects
-Gem Collector
-Queen of Hearts
-The Mountain King
-Rebel Captain
-Rebel Scout
-Rebel Soldier
-Rebel Miner
-Kobold Merchant
-Archeologist
+### Conditional effects
+Gem Collector // Do you get a refund for previously purchased gems?
 
 ### Effect Ordering / Additive Effects
 Swagger

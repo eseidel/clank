@@ -345,6 +345,9 @@ class ClankGame {
     assert(turn.hand.isEmpty);
     activePlayer.deck.discardPlayAreaAndDrawNewHand(_random);
 
+    // Must use all queued actions (e.g. teleports)
+    assert(turn.teleports == 0);
+
     // Refill the dungeon row
     ArrivalTriggers triggers = board.refillDungeonRow();
     if (triggers.clankForAll != 0) {
@@ -1013,8 +1016,9 @@ class PlayerDeck {
     int total = 0;
     for (var card in allCards) {
       total += card.points;
-      if (card.type.pointsEffect != PointsEffect.none) {
-        total += conditionalPointsFor(card.type, conditions);
+      ConditionalPoints? pointsCondition = card.type.pointsCondition;
+      if (pointsCondition != null) {
+        total += pointsCondition(conditions);
       }
     }
     return total;
