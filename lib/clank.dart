@@ -41,7 +41,12 @@ class Player {
   Iterable<LootToken> get usableItems => loot.where((loot) => loot.loot.usable);
 
   bool get hasArtifact => loot.any((token) => token.isArtifact);
+  bool get hasCrown => loot.any((token) => token.isCrown);
+  bool get hasMonkeyIdol => loot.any((token) => token.isMonkeyIdol);
   bool get inGame => status == PlayerStatus.inGame;
+
+  int get companionsInPlayArea => deck.playArea
+      .fold(0, (sum, card) => sum + (card.type.isCompanion ? 1 : 0));
 
   bool get canTakeArtifact {
     int artifactCount =
@@ -258,6 +263,11 @@ class ClankGame {
       executeOthersClank(cardType);
     }
     turn.player.gold += cardType.gainGold;
+
+    TriggerEffects? triggers = cardType.triggers;
+    if (triggers != null) {
+      turn.unresolvedTriggers.add(triggers);
+    }
   }
 
   void executeUseDevice(Turn turn, UseDevice action) {
@@ -389,6 +399,37 @@ class ClankGame {
     return changedStatus;
   }
 
+  void applyTriggeredEffect(Turn turn, Effect effect) {
+    assert(effect.triggered);
+    turn.skill += effect.skill;
+    turn.boots += effect.boots;
+    turn.swords += effect.swords;
+    turn.teleports += effect.teleports;
+    if (effect.drawCards > 0) {
+      turn.player.deck.drawCards(_random, effect.drawCards);
+    }
+    if (effect.hearts > 0) {
+      board.healDamage(turn.player.color, effect.hearts);
+    }
+  }
+
+  void executeTriggeredEffects(Turn turn) {
+    var player = turn.player;
+    // This is a bit of an abuse of removeWhere.
+    turn.unresolvedTriggers.removeWhere((trigger) {
+      Effect effect = trigger(EffectTriggers(
+        haveArtifact: player.hasArtifact,
+        haveCrown: player.hasCrown,
+        haveMonkeyIdol: player.hasMonkeyIdol,
+        twoCompanionsInPlayArea: player.companionsInPlayArea > 1,
+      ));
+      if (effect.triggered) {
+        applyTriggeredEffect(turn, effect);
+      }
+      return effect.triggered;
+    });
+  }
+
   // This probably belongs outside of the game class.
   Future<void> takeTurn() async {
     final turn = Turn(player: activePlayer);
@@ -406,6 +447,7 @@ class ClankGame {
       action = await activePlayer.planner.nextAction(turn, board);
       // Never trust what comes back from a plan?
       executeAction(turn, action);
+      executeTriggeredEffects(turn);
       //print(turn);
     } while (!(action is EndTurn));
     executeEndOfTurn(turn);
@@ -463,7 +505,7 @@ class ClankGame {
     for (var space in spacesWithSpecial(Special.majorSecret)) {
       majorSecrets.removeLast().moveTo(space);
     }
-    // TODO: Monkey Tokens
+    // TODO: Place monkey Tokens
     // var monkeyTokenSpaces = spacesWithSpecial(Special.monkeyShrine);
   }
 
@@ -622,6 +664,10 @@ class Loot {
         swords = 0,
         usable = false,
         acquireRage = 0;
+
+  // A bit of a hack.  Crown is the only same-named loot with varying points. :/
+  bool get isCrown => name.startsWith('Crown');
+  bool get isMonkeyIdol => name == 'Monkey Idol';
 
   @override
   String toString() => name;
@@ -1070,6 +1116,8 @@ class LootToken extends Token {
   bool get isArtifact => loot.type == LootType.artifact;
   bool get isMinorSecret => loot.type == LootType.minorSecret;
   bool get isMajorSecret => loot.type == LootType.majorSecret;
+  bool get isMonkeyIdol => loot.isMonkeyIdol;
+  bool get isCrown => loot.isCrown;
 
   int get points => loot.points;
 

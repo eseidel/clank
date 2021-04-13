@@ -59,6 +59,7 @@ class CardType {
   final int gainGold;
   final PlayEffect playEffect;
   final ConditionalPoints? pointsCondition;
+  final TriggerEffects? triggers;
   final CardSubType subtype;
 
   final bool neverDiscards; // Special just for Goblin.
@@ -89,6 +90,7 @@ class CardType {
     this.teleports = 0,
     this.playEffect = PlayEffect.none,
     this.pointsCondition,
+    this.triggers,
     this.subtype = CardSubType.none,
     this.neverDiscards = false,
   })  : assert(skill >= 0),
@@ -123,6 +125,64 @@ class CardType {
 
 enum PlayEffect {
   none,
+}
+
+// Maybe this should be shared with Loot and CardType somehow?
+class Effect {
+  final bool triggered;
+  final int swords;
+  final int skill;
+  final int boots;
+  final int drawCards;
+  final int gold;
+  final int hearts;
+  final int teleports;
+  Effect({
+    required this.triggered,
+    this.boots = 0,
+    this.drawCards = 0,
+    this.gold = 0,
+    this.hearts = 0,
+    this.skill = 0,
+    this.swords = 0,
+    this.teleports = 0,
+  });
+}
+
+typedef TriggerEffects = Effect Function(EffectTriggers triggers);
+
+class EffectTriggers {
+  final bool haveCrown;
+  // Card text is "if you have another companion in play area"
+  // But since these companions are unique 2+ companions should be equivalent.
+  final bool twoCompanionsInPlayArea;
+  final bool haveArtifact;
+  final bool haveMonkeyIdol;
+
+  EffectTriggers({
+    required this.haveCrown,
+    required this.twoCompanionsInPlayArea,
+    required this.haveArtifact,
+    required this.haveMonkeyIdol,
+  });
+
+  static Effect theMountainKing(EffectTriggers triggers) =>
+      Effect(triggered: triggers.haveCrown, swords: 1, boots: 1);
+
+  static Effect queenOfHearts(EffectTriggers triggers) =>
+      Effect(triggered: triggers.haveCrown, hearts: 1);
+
+  static Effect ifTwoCompanionInPlayAreaDrawCard(EffectTriggers triggers) =>
+      Effect(triggered: triggers.twoCompanionsInPlayArea, drawCards: 1);
+
+  static Effect koboldMerchant(EffectTriggers triggers) =>
+      Effect(triggered: triggers.haveArtifact, skill: 2);
+
+  static Effect wandOfRecall(EffectTriggers triggers) =>
+      Effect(triggered: triggers.haveArtifact, teleports: 1);
+
+  static Effect archaeologist(EffectTriggers triggers) =>
+      Effect(triggered: triggers.haveMonkeyIdol, skill: 2);
 }
 
 typedef ConditionalPoints = int Function(PointsConditions conditions);
@@ -308,6 +368,25 @@ const List<CardType> baseSetAllCardTypes = [
     othersClank: 1,
     skillCost: 3,
   ),
+  CardType(
+    name: 'Wand of Recall',
+    set: CardSet.dungeon,
+    count: 2,
+    points: 1,
+    skill: 2,
+    triggers: EffectTriggers.wandOfRecall,
+    skillCost: 5,
+  ),
+  CardType(
+    name: 'Archaeologist',
+    set: CardSet.dungeon,
+    subtype: CardSubType.companion,
+    count: 2,
+    points: 1,
+    drawCards: 1,
+    triggers: EffectTriggers.archaeologist,
+    skillCost: 2,
+  ),
 
   // Unique Cards
   CardType(
@@ -463,6 +542,79 @@ const List<CardType> baseSetAllCardTypes = [
     clank: 1,
     teleports: 1,
     skillCost: 4,
+  ),
+  CardType(
+    name: 'Kobold Merchant',
+    set: CardSet.dungeon,
+    subtype: CardSubType.companion,
+    count: 1,
+    points: 1,
+    gainGold: 2,
+    triggers: EffectTriggers.koboldMerchant,
+    skillCost: 3,
+  ),
+  CardType(
+    name: 'The Mountain King',
+    set: CardSet.dungeon,
+    subtype: CardSubType.companion,
+    count: 1,
+    points: 3,
+    skill: 2,
+    swords: 1,
+    boots: 1,
+    triggers: EffectTriggers.theMountainKing,
+    skillCost: 6,
+  ),
+  CardType(
+    name: 'The Queen of Hearts',
+    set: CardSet.dungeon,
+    subtype: CardSubType.companion,
+    count: 1,
+    points: 3,
+    skill: 3,
+    swords: 1,
+    triggers: EffectTriggers.queenOfHearts,
+    skillCost: 6,
+  ),
+  CardType(
+    name: 'Rebel Miner',
+    set: CardSet.dungeon,
+    subtype: CardSubType.companion,
+    count: 1,
+    points: 1,
+    gainGold: 2,
+    triggers: EffectTriggers.ifTwoCompanionInPlayAreaDrawCard,
+    skillCost: 2,
+  ),
+  CardType(
+    name: 'Rebel Soldier',
+    set: CardSet.dungeon,
+    subtype: CardSubType.companion,
+    count: 1,
+    points: 1,
+    swords: 2,
+    triggers: EffectTriggers.ifTwoCompanionInPlayAreaDrawCard,
+    skillCost: 2,
+  ),
+  CardType(
+    name: 'Rebel Scout',
+    set: CardSet.dungeon,
+    subtype: CardSubType.companion,
+    count: 1,
+    points: 1,
+    boots: 2,
+    triggers: EffectTriggers.ifTwoCompanionInPlayAreaDrawCard,
+    skillCost: 3,
+  ),
+  CardType(
+    name: 'Rebel Captain',
+    set: CardSet.dungeon,
+    subtype: CardSubType.companion,
+    count: 1,
+    points: 1,
+    skill: 2,
+    triggers: EffectTriggers.ifTwoCompanionInPlayAreaDrawCard,
+    skillCost: 3,
   ),
 
   // Monsters

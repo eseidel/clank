@@ -77,6 +77,10 @@ class Turn {
   // https://boardgamegeek.com/thread/1654963/article/23962792#23962792
   int teleports = 0;
   int leftoverClankReduction = 0; // always negative
+  // Some cards have effects which require other conditions to complete
+  // Hold them in unresolvedTriggers until they do. (e.g. Rebel Scout)
+  List<TriggerEffects> unresolvedTriggers = [];
+
   Turn({required this.player});
 
   List<Card> get hand => player.deck.hand;

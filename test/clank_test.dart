@@ -719,4 +719,112 @@ void main() {
     expect(turn.teleports, 1);
     expect(turn.boots, 3);
   });
+
+  test('mountain king triggered effects', () {
+    var game = ClankGame(planners: [MockPlanner()]);
+    var crown =
+        game.box.makeAllLootTokens().firstWhere((loot) => loot.loot.isCrown);
+    var player = game.activePlayer;
+    Turn turn = Turn(player: player);
+    addAndPlayCard(game, turn, 'The Mountain King');
+    expect(turn.skill, 2);
+    expect(turn.boots, 1);
+    expect(turn.swords, 1);
+    player.loot.add(crown);
+    game.executeTriggeredEffects(turn);
+    expect(turn.boots, 2);
+    expect(turn.swords, 2);
+  });
+
+  test('queen of hearts triggered effects', () {
+    var game = ClankGame(planners: [MockPlanner()]);
+    var crown =
+        game.box.makeAllLootTokens().firstWhere((loot) => loot.loot.isCrown);
+    var player = game.activePlayer;
+    Turn turn = Turn(player: player);
+    game.board.takeDamage(player.color, 2);
+    addAndPlayCard(game, turn, 'The Queen of Hearts');
+    expect(game.board.damageTakenByPlayer(player.color), 2);
+    expect(turn.skill, 3);
+    expect(turn.swords, 1);
+    player.loot.add(crown);
+    game.executeTriggeredEffects(turn);
+    expect(game.board.damageTakenByPlayer(player.color), 1);
+  });
+
+  test('kobold merchant triggered effects', () {
+    var game = ClankGame(planners: [MockPlanner()]);
+    var artifact =
+        game.box.makeAllLootTokens().firstWhere((loot) => loot.isArtifact);
+    var player = game.activePlayer;
+    Turn turn = Turn(player: player);
+    addAndPlayCard(game, turn, 'Kobold Merchant');
+    expect(turn.skill, 0);
+    expect(player.gold, 2);
+    player.loot.add(artifact);
+    game.executeTriggeredEffects(turn);
+    expect(turn.skill, 2);
+  });
+
+  test('rebel triggered effects', () {
+    var game = ClankGame(planners: [MockPlanner()]);
+    var player = game.activePlayer;
+    Turn turn = Turn(player: player);
+    addAndPlayCard(game, turn, 'Rebel Miner');
+    expect(player.deck.hand.length, 5);
+    expect(player.gold, 2);
+    game.executeTriggeredEffects(turn);
+    expect(player.deck.hand.length, 5);
+
+    addAndPlayCard(game, turn, 'Rebel Soldier');
+    expect(player.deck.hand.length, 5);
+    expect(turn.swords, 2);
+    game.executeTriggeredEffects(turn);
+    expect(player.deck.hand.length, 7); // Draw for both rebels.
+    expect(player.deck.hand.length, 7); // Triggering again does nothing.
+
+    addAndPlayCard(game, turn, 'Rebel Scout');
+    expect(player.deck.hand.length, 7);
+    expect(turn.boots, 2);
+    game.executeTriggeredEffects(turn);
+    expect(player.deck.hand.length, 8); // Draw only for the new rebel.
+
+    addAndPlayCard(game, turn, 'Rebel Captain');
+    expect(player.deck.hand.length, 8);
+    expect(turn.skill, 2);
+    game.executeTriggeredEffects(turn);
+    expect(player.deck.hand.length, 9); // Draw only for the new rebel.
+  });
+
+  test('wand of recall triggered effects', () {
+    var game = ClankGame(planners: [MockPlanner()]);
+    var artifact =
+        game.box.makeAllLootTokens().firstWhere((loot) => loot.isArtifact);
+    var player = game.activePlayer;
+    Turn turn = Turn(player: player);
+    addAndPlayCard(game, turn, 'Wand of Recall');
+    expect(turn.skill, 2);
+    game.executeTriggeredEffects(turn);
+    expect(turn.teleports, 0);
+    player.loot.add(artifact);
+    game.executeTriggeredEffects(turn);
+    expect(turn.teleports, 1);
+  });
+
+  test('archaeologist triggered effects', () {
+    var game = ClankGame(planners: [MockPlanner()]);
+    var monkeyIdol =
+        game.box.makeAllLootTokens().firstWhere((loot) => loot.isMonkeyIdol);
+    var player = game.activePlayer;
+    Turn turn = Turn(player: player);
+    expect(player.deck.hand.length, 5);
+    addAndPlayCard(game, turn, 'Archaeologist');
+    expect(player.deck.hand.length, 6);
+    expect(turn.skill, 0);
+    game.executeTriggeredEffects(turn);
+    expect(turn.skill, 0);
+    player.loot.add(monkeyIdol);
+    game.executeTriggeredEffects(turn);
+    expect(turn.skill, 2);
+  });
 }

@@ -26,17 +26,6 @@ dart run bin/simulate.dart
 Flying Carpet
 Dead Run
 
-### Once-Triggered Effects
-Wand of Recall
-Archeologist
-Kobold Merchant
-The Mountain King
-Rebel Captain
-Rebel Scout
-Rebel Soldier
-Rebel Miner
-Queen of Hearts
-
 ### Or Effects
 Wand of Wind (Also teleport)
 Underworld Dealing
@@ -66,7 +55,7 @@ https://d19y2ttatozxjp.cloudfront.net/assets/clank/Clank_FAQ.pdf
 You don't "make clank" if you can't push cubes:
 https://boardgamegeek.com/thread/1668384/article/24171648#24171648
 
-Entering a crystal marks you as exhausted even  if you teleport in/out
+Entering a crystal marks you as exhausted even if you teleport in/out
 https://boardgamegeek.com/thread/1671635/article/25115569#25115569
 
 Magic Spring happens the turn it was found and is manditory:
