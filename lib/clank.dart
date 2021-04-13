@@ -534,6 +534,7 @@ class Loot {
   final int count;
   final int points;
   final int hearts;
+  // TODO: This is not true!  Fix.
   // It is detectable that this is "gold" and not "acquireGold" via cards like
   // "Search" which can increase gold gained in a turn, hence you might wish
   // to acquire a gold secret but delay using until played same turn as Search.

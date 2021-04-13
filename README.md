@@ -1,6 +1,7 @@
 # clank
 
 An attempt a simulating the rules of one of my wife's favorite games: Clank!
+
 https://www.direwolfdigital.com/clank/
 
 
@@ -21,14 +22,14 @@ dart run bin/simulate.dart
 
 ## Missing Features/Cards
 
-# Traverse Effects / Teleport
+### Traverse Effects / Teleport
 Flying Carpet
 Dead Run
 Invoker of the Ancients
 Wand of Recall
 Teleporter
 
-# Or Effects
+### Or Effects
 Wand of Wind (Also teleport)
 Underworld Dealing
 Mister Whiskers
@@ -36,12 +37,12 @@ Apothecary
 Dragon Shrine (and trash)
 Shrine
 
-# Choose Card / Discard effects
+### Choose Card / Discard effects
 Sleight of Hand
 Treasure Hunter
 Master Burglar (Not really any choice, just a limited Magic Spring?)
 
-# Effect ordering / Conditional effects
+### Effect ordering / Conditional effects
 Gem Collector
 Queen of Hearts
 The Mountain King
@@ -52,14 +53,15 @@ Rebel Miner
 Kobold Merchant
 Archeologist
 
-# Effect Ordering / Additive Effects
+### Effect Ordering / Additive Effects
 Swagger
 Search
 
 ## Designer Notes
 FAQ (2019):
-https://d19y2ttatozxjp.cloudfront.net/assets/clank/Clank_FAQ.pdf
+
 Says "slight of hand" as last card doesn't generate drawing.
+https://d19y2ttatozxjp.cloudfront.net/assets/clank/Clank_FAQ.pdf
 
 Teleport is not immediate:
 https://boardgamegeek.com/thread/1654963/article/23962792#23962792
