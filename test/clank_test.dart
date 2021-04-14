@@ -868,6 +868,8 @@ void main() {
     expect(turn.boots, 6);
     moves = generator.possibleMoves();
     expect(moves.length, 1); // No longer exhausted!
+
+    // TODO: Test teleporting into a room still gets exhausted.
   });
 
   test('flying carpet ignores exhaustion and monsters', () {
@@ -905,5 +907,78 @@ void main() {
     expect(turn.boots, 5);
     expect(turn.exhausted, isFalse);
     expect(board.damageTakenByPlayer(player.color), 1); // no more dmg taken!
+  });
+
+  test('treasure hunter', () {
+    // Seed is important to ensure dungeonRow doesn't have duplicates.
+    var game = ClankGame(planners: [MockPlanner()], seed: 0);
+    var board = game.board;
+    var player = game.activePlayer;
+    var turn = Turn(player: player);
+
+    addAndPlayCard(game, turn, 'Treasure Hunter');
+    expect(turn.skill, 2);
+    expect(turn.swords, 2);
+    expect(turn.queuedEffects.length, 1);
+    // Cards with complex actions are split into two.
+    var possibleActions = ActionGenerator(turn, board).possibleQueuedEffects();
+    expect(possibleActions.length, 6); // One per card (no duplicates);
+    game.executeAction(turn, possibleActions.first);
+    expect(board.dungeonDiscard.length, 1);
+    expect(board.dungeonRow.length, 6);
+    expect(board.dragonBag.totalCubes, 24); // No attacks were made.
+  });
+
+  test('Master Burglar', () {
+    var game = ClankGame(planners: [MockPlanner()]);
+    var player = game.activePlayer;
+    var turn = Turn(player: player);
+
+    addAndPlayCard(game, turn, 'Master Burglar');
+    expect(turn.skill, 2);
+    expect(player.deck.cardCount, 11); // Starter + one Master Burglar.
+    // Starting with 6 burgles, one will always be in the first hand.
+    player.deck.discardPile.addAll(player.deck.hand);
+    player.deck.hand = [];
+    game.executeEndOfTurn(turn);
+    expect(player.deck.cardCount, 10); // One burgle gone.
+    expect(player.countOfCards(game.library.cardTypeByName('Burgle')), 5);
+  });
+
+  test('unique values', () {
+    var game = ClankGame(planners: [MockPlanner()]);
+    game.board.dungeonRow = game.library.make('Master Burglar', 3);
+    expect(game.board.availableCardTypes.length, 5); // 1 for row, 4 on reserve.
+  });
+
+  test('master key unlocks tunnels', () {
+    var game = ClankGame(planners: [MockPlanner()]);
+    var board = game.board;
+    var player = game.activePlayer;
+    var allLoot = game.box.makeAllLootTokens();
+    var key = allLoot.firstWhere((loot) => loot.loot.name == 'Master Key');
+
+    var builder = GraphBuilder();
+    var from = Space.at(0, 0);
+    var to = Space.at(0, 1);
+    builder.connect(from, to, requiresKey: true);
+    board.graph = Graph(start: Space.start(), allSpaces: [from, to]);
+    player.token.moveTo(from);
+
+    var turn = Turn(player: player);
+    turn.boots = 5; // plenty
+    var generator = ActionGenerator(turn, board);
+    var moves = generator.possibleMoves();
+    expect(moves.length, 0); // Only available edge requires key.
+
+    turn.player.loot.add(key);
+    expect(player.hasMasterKey, isTrue);
+    moves = generator.possibleMoves();
+    expect(moves.length, 1); // Can now go through edge!
+    game.executeAction(turn, moves.first);
+    expect(turn.boots, 4);
+    moves = generator.possibleMoves();
+    expect(moves.length, 1); // And back, key isn't used up.
+    expect(player.hasMasterKey, isTrue);
   });
 }

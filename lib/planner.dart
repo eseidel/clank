@@ -65,6 +65,11 @@ class UseDevice extends Action {
   }
 }
 
+class ReplaceCardInDungeonRow extends Action {
+  final CardType cardType;
+  ReplaceCardInDungeonRow(this.cardType);
+}
+
 class EndTurn extends Action {}
 
 // Planner can't modify turn directly?
@@ -84,6 +89,13 @@ class Turn {
   // Hold them in unresolvedTriggers until they do. (e.g. Rebel Scout)
   List<TriggerEffects> unresolvedTriggers = [];
 
+  // Actions from cards which don't have to happen immediately, but must
+  // happen by end of turn.
+  List<QueuedEffect> queuedEffects = [];
+
+  // Actions which happen as result of end of turn (e.g. trashing)
+  List<EndOfTurnEffect> endOfTurnEffects = [];
+
   Turn({required this.player});
 
   List<Card> get hand => player.deck.hand;
@@ -91,16 +103,12 @@ class Turn {
   void enteredCrystalCave() => _exhausted = true;
   bool get exhausted => _exhausted && !ignoreExhaustion;
 
-  bool hasKey = false;
-
   void addTurnResourcesFromCard(CardType cardType) {
     skill += cardType.skill;
     boots += cardType.boots;
     swords += cardType.swords;
     teleports += cardType.teleports;
   }
-  // Player, starting location, other state?
-  // Current resources
 
   // Does this belong on board instead?
   int adjustClank(Board board, int desired) {
@@ -177,10 +185,8 @@ class ActionGenerator {
 
   ActionGenerator(this.turn, this.board);
 
-  Iterable<PlayCard> possibleCardPlays() {
-    // TODO: This should only return each unique CardType once.
-    return turn.hand.map((card) => PlayCard(card.type));
-  }
+  Iterable<PlayCard> possibleCardPlays() =>
+      uniqueValues(turn.hand.map((card) => PlayCard(card.type)));
 
   Iterable<Traverse> possibleMoves() sync* {
     int hpAvailableForTraversal = turn.hpAvailableForMonsterTraversals(board);
@@ -188,7 +194,7 @@ class ActionGenerator {
       if (edge.requiresArtifact && !turn.player.hasArtifact) return false;
       if (useTeleport) return true;
       if (turn.exhausted) return false;
-      if (edge.requiresKey && !turn.hasKey) return false;
+      if (edge.requiresKey && !turn.player.hasMasterKey) return false;
       if (edge.bootsCost > turn.boots) return false;
       if (!turn.ignoreMonsters &&
           edge.swordsCost > (turn.swords + hpAvailableForTraversal)) {
@@ -271,6 +277,19 @@ class ActionGenerator {
       yield UseItem(item: item.loot);
     }
   }
+
+  Iterable<Action> possibleQueuedEffects() sync* {
+    for (var action in turn.queuedEffects) {
+      switch (action) {
+        case QueuedEffect.replaceCardInDungeonRow:
+          for (var cardType
+              in uniqueValues(board.dungeonRow.map((card) => card.type))) {
+            yield ReplaceCardInDungeonRow(cardType);
+          }
+          break;
+      }
+    }
+  }
 }
 
 class RandomPlanner implements Planner {
@@ -300,6 +319,7 @@ class RandomPlanner implements Planner {
     possible.addAll(generator.possibleMoves());
     possible.addAll(generator.possibleCardAcquisitions());
     possible.addAll(generator.possibleItemUses());
+    possible.addAll(generator.possibleQueuedEffects());
 
     if (possible.isNotEmpty) {
       possible.shuffle(_random);

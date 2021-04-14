@@ -43,6 +43,7 @@ class Player {
   bool get hasArtifact => loot.any((token) => token.isArtifact);
   bool get hasCrown => loot.any((token) => token.isCrown);
   bool get hasMonkeyIdol => loot.any((token) => token.isMonkeyIdol);
+  bool get hasMasterKey => loot.any((token) => token.isMasterKey);
   bool get inGame => status == PlayerStatus.inGame;
 
   int get companionsInPlayArea => deck.playArea
@@ -87,6 +88,22 @@ class Player {
         .fold(0, (sum, card) => sum + (card.type == cardType ? 1 : 0));
   }
 
+  // There must be a shorter way to write this?
+  void trashCardOfType(CardType cardType) {
+    for (var card in deck.playArea) {
+      if (card.type == cardType) {
+        deck.playArea.remove(card);
+        return;
+      }
+    }
+    for (var card in deck.discardPile) {
+      if (card.type == cardType) {
+        deck.discardPile.remove(card);
+        return;
+      }
+    }
+  }
+
   bool hasLoot(Loot lootType) {
     for (var lootToken in loot) {
       if (lootToken.loot == lootType) return true;
@@ -116,6 +133,20 @@ class Player {
 
   @override
   String toString() => '${colorToString(color)}';
+}
+
+abstract class EndOfTurnEffect {
+  void execute(Turn turn);
+}
+
+class TrashCard extends EndOfTurnEffect {
+  final CardType cardType;
+  TrashCard(this.cardType);
+
+  @override
+  void execute(Turn turn) {
+    turn.player.trashCardOfType(cardType);
+  }
 }
 
 class ClankGame {
@@ -155,7 +186,6 @@ class ClankGame {
   }
 
   void executeRoomEntryEffects(Turn turn, Traverse action) {
-    // TODO: Other move-entry effects (like crystal cave).
     // print('$player moved: ${edge.end}');
     var player = turn.player;
 
@@ -166,6 +196,8 @@ class ClankGame {
       player.loot.add(LootToken(box.lootByName('Mastery Token')));
     }
 
+    // Entering a crystal marks you as exhausted even if you teleport in/out
+    // https://boardgamegeek.com/thread/1671635/article/25115569#25115569
     if (action.edge.end.isCrystalCave) {
       turn.enteredCrystalCave();
     }
@@ -201,7 +233,6 @@ class ClankGame {
     Player player = turn.player;
     player.token.moveTo(edge.end);
     executeRoomEntryEffects(turn, action);
-    // TODO: handle keys, exhaustion, etc.
   }
 
   void executeAcquireCardEffects(Turn turn, Card card) {
@@ -258,6 +289,13 @@ class ClankGame {
     }
   }
 
+  EndOfTurnEffect createEndOfTurnEffect(EndOfTurn effect) {
+    switch (effect) {
+      case EndOfTurn.trashPlayedBurgle:
+        return TrashCard(library.cardTypeByName('Burgle'));
+    }
+  }
+
   // Used by both PlayCard and Fight.
   void executeCardUseEffects(Turn turn, CardType cardType) {
     assert(cardUsableAtLocation(cardType, turn.player.location));
@@ -282,6 +320,13 @@ class ClankGame {
     }
     if (cardType.ignoreMonsters) {
       turn.ignoreMonsters = true;
+    }
+
+    if (cardType.queuedEffect != null) {
+      turn.queuedEffects.add(cardType.queuedEffect!);
+    }
+    if (cardType.endOfTurn != null) {
+      turn.endOfTurnEffects.add(createEndOfTurnEffect(cardType.endOfTurn!));
     }
   }
 
@@ -352,6 +397,11 @@ class ClankGame {
       executeUseItem(turn, action);
       return;
     }
+    // Should this really be its own action subclass?
+    if (action is ReplaceCardInDungeonRow) {
+      board.replaceCardInDungeonRowIgnoringDragon(action.cardType);
+      return;
+    }
     assert(false);
   }
 
@@ -365,13 +415,20 @@ class ClankGame {
     }
   }
 
+  void executeEndOfTurnEffects(Turn turn) {
+    for (var effect in turn.endOfTurnEffects) {
+      effect.execute(turn);
+    }
+  }
+
   void executeEndOfTurn(Turn turn) {
     // You must play all cards
     assert(turn.hand.isEmpty);
     activePlayer.deck.discardPlayAreaAndDrawNewHand(_random);
 
-    // Must use all queued actions (e.g. teleports)
-    assert(turn.teleports == 0);
+    assert(turn.teleports == 0, 'Must use all teleports.');
+    assert(turn.queuedEffects.isEmpty, 'Must use all queued effects.');
+    executeEndOfTurnEffects(turn);
 
     // Refill the dungeon row
     ArrivalTriggers triggers = board.refillDungeonRow();
@@ -683,6 +740,8 @@ class Loot {
   // A bit of a hack.  Crown is the only same-named loot with varying points. :/
   bool get isCrown => name.startsWith('Crown');
   bool get isMonkeyIdol => name == 'Monkey Idol';
+  bool get isMasterKey => name == 'Master Key';
+  bool get isBackpack => name == 'Backpack';
 
   @override
   String toString() => name;
@@ -855,6 +914,15 @@ class ArrivalTriggers {
   ArrivalTriggers({required this.dragonAttacks, required this.clankForAll});
 }
 
+// O(N^2), use only for short lists.
+Iterable<T> uniqueValues<T>(Iterable<T> values) {
+  List<T> seen = [];
+  for (var value in values) {
+    if (!seen.contains(value)) seen.add(value);
+  }
+  return seen;
+}
+
 class Board {
   static const int playerMaxHealth = 10;
   static const int dragonMaxCubeCount = 24;
@@ -897,11 +965,25 @@ class Board {
   ArrivalTriggers refillDungeonRow() {
     int needed = dungeonRowMaxSize - dungeonRow.length;
     List<Card> newCards = dungeonDeck.takeAndRemoveUpTo(needed);
+    dungeonRow.addAll(newCards);
+    return arrivalTriggersForNewCards(newCards);
+  }
+
+  ArrivalTriggers arrivalTriggersForNewCards(Iterable<Card> newCards,
+      {bool ignoreDragon = false}) {
     bool newDragon = newCards.any((card) => card.type.dragon);
     int arrivalClank =
         newCards.fold(0, (sum, card) => sum + card.type.arriveClank);
-    dungeonRow.addAll(newCards);
     return ArrivalTriggers(dragonAttacks: newDragon, clankForAll: arrivalClank);
+  }
+
+  ArrivalTriggers replaceCardInDungeonRowIgnoringDragon(CardType cardType) {
+    var card = dungeonRow.firstWhere((card) => card.type == cardType);
+    dungeonRow.remove(card);
+    dungeonDiscard.add(card);
+    var newCards = dungeonDeck.takeAndRemoveUpTo(1);
+    dungeonRow.addAll(newCards);
+    return arrivalTriggersForNewCards(newCards, ignoreDragon: true);
   }
 
   void increaseDragonRage([int amount = 1]) {
@@ -989,8 +1071,8 @@ class Board {
   }
 
   Iterable<CardType> get availableCardTypes {
-    return reserve.availableCardTypes
-        .followedBy(dungeonRow.map((card) => card.type));
+    return uniqueValues(reserve.availableCardTypes
+        .followedBy(dungeonRow.map((card) => card.type)));
   }
 
   Card takeCard(CardType cardType) {
@@ -1043,14 +1125,6 @@ class PlayerDeck {
     hand.remove(card);
     playArea.add(card);
   }
-
-  // void discard(Card card) {
-  //   if (!hand.contains(card)) {
-  //     throw ArgumentError('Hand does not contain $card. Can't discard it.');
-  //   }
-  //   hand.remove(card);
-  //   discardPile.add(card);
-  // }
 
   int drawCards(Random random, int count) {
     List<Card> drawn = [];
@@ -1132,6 +1206,8 @@ class LootToken extends Token {
   bool get isMinorSecret => loot.type == LootType.minorSecret;
   bool get isMajorSecret => loot.type == LootType.majorSecret;
   bool get isMonkeyIdol => loot.isMonkeyIdol;
+  bool get isMasterKey => loot.isMasterKey;
+  bool get isBackpack => loot.isBackpack;
   bool get isCrown => loot.isCrown;
 
   int get points => loot.points;

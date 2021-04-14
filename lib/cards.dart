@@ -1,3 +1,5 @@
+// This should not need to import clank.dart.
+
 enum CardSet {
   starter,
   reserve,
@@ -61,7 +63,8 @@ class CardType {
   final bool ignoreExhaustion;
   final bool ignoreMonsters;
 
-  final PlayEffect playEffect;
+  final QueuedEffect? queuedEffect;
+  final EndOfTurn? endOfTurn;
   final ConditionalPoints? pointsCondition;
   final TriggerEffects? triggers;
   final CardSubType subtype;
@@ -94,7 +97,8 @@ class CardType {
     this.teleports = 0,
     this.ignoreExhaustion = false,
     this.ignoreMonsters = false,
-    this.playEffect = PlayEffect.none,
+    this.queuedEffect,
+    this.endOfTurn,
     this.pointsCondition,
     this.triggers,
     this.subtype = CardSubType.none,
@@ -129,20 +133,15 @@ class CardType {
   String toString() => name;
 }
 
-enum PlayEffect {
-  none,
+enum QueuedEffect {
+  replaceCardInDungeonRow,
 }
 
-// Delayed effects
-// Trash a card
-// Trash a burgle
-// Teleport
-// Replace a card in the dungeon row
-//
-
-// Maybe not delayed (no other effects on the card)
-// Discard a Card to draw 2 (not actually delayed?)
-//
+enum EndOfTurn {
+  // trashPlayedCardNow,
+  trashPlayedBurgle,
+  // discardToDrawTwo, // Not actually delayed?
+}
 
 // Maybe this should be shared with Loot and CardType somehow?
 class Effect {
@@ -413,6 +412,29 @@ const List<CardType> baseSetAllCardTypes = [
     ignoreExhaustion: true,
     skillCost: 3,
   ),
+  CardType(
+    name: 'Treasure Hunter',
+    set: CardSet.dungeon,
+    subtype: CardSubType.companion,
+    points: 1,
+    count: 2,
+    skill: 2,
+    swords: 2,
+    queuedEffect: QueuedEffect.replaceCardInDungeonRow,
+    skillCost: 3,
+  ),
+  CardType(
+    name: 'Master Burglar',
+    set: CardSet.dungeon,
+    subtype: CardSubType.companion,
+    points: 2,
+    count: 2,
+    skill: 2,
+    endOfTurn: EndOfTurn.trashPlayedBurgle,
+    skillCost: 3,
+  ),
+
+  // Singletons
   CardType(
     name: 'Flying Carpet',
     set: CardSet.dungeon,
