@@ -167,7 +167,7 @@ class ClankGame {
     }
 
     if (action.edge.end.isCrystalCave) {
-      turn.exhausted = true;
+      turn.enteredCrystalCave();
     }
 
     if (action.takeItem) {
@@ -188,9 +188,13 @@ class ClankGame {
       turn.boots -= edge.bootsCost;
       assert(turn.boots >= 0);
       if (action.spendHealth > 0) {
+        assert(!turn.ignoreMonsters,
+            'Not possible to spend health after ignore monsters!');
         board.takeDamage(turn.player.color, action.spendHealth);
       }
-      turn.swords -= (edge.swordsCost - action.spendHealth);
+      if (!turn.ignoreMonsters) {
+        turn.swords -= (edge.swordsCost - action.spendHealth);
+      }
       assert(turn.swords >= 0);
     }
 
@@ -272,6 +276,12 @@ class ClankGame {
     TriggerEffects? triggers = cardType.triggers;
     if (triggers != null) {
       turn.unresolvedTriggers.add(triggers);
+    }
+    if (cardType.ignoreExhaustion) {
+      turn.ignoreExhaustion = true;
+    }
+    if (cardType.ignoreMonsters) {
+      turn.ignoreMonsters = true;
     }
   }
 

@@ -76,7 +76,9 @@ class Turn {
   // Teleport is not immediate, and can be accumulated between cards:
   // https://boardgamegeek.com/thread/1654963/article/23962792#23962792
   int teleports = 0;
-  bool exhausted = false;
+  bool _exhausted = false; // Entered a crystal cave.
+  bool ignoreExhaustion = false;
+  bool ignoreMonsters = false;
   int leftoverClankReduction = 0; // always negative
   // Some cards have effects which require other conditions to complete
   // Hold them in unresolvedTriggers until they do. (e.g. Rebel Scout)
@@ -86,7 +88,9 @@ class Turn {
 
   List<Card> get hand => player.deck.hand;
 
-  bool usingTeleporter = false;
+  void enteredCrystalCave() => _exhausted = true;
+  bool get exhausted => _exhausted && !ignoreExhaustion;
+
   bool hasKey = false;
 
   void addTurnResourcesFromCard(CardType cardType) {
@@ -186,7 +190,8 @@ class ActionGenerator {
       if (turn.exhausted) return false;
       if (edge.requiresKey && !turn.hasKey) return false;
       if (edge.bootsCost > turn.boots) return false;
-      if (edge.swordsCost > (turn.swords + hpAvailableForTraversal)) {
+      if (!turn.ignoreMonsters &&
+          edge.swordsCost > (turn.swords + hpAvailableForTraversal)) {
         return false;
       }
       return true;
@@ -207,12 +212,14 @@ class ActionGenerator {
       }
 
       if (haveResourcesFor(edge, useTeleport: false)) {
+        int swordsCost = edge.swordsCost;
+        if (turn.ignoreMonsters) swordsCost = 0;
         // Yield one per possible distribution of health vs. swords spend.
         // For paths with zero swords this executes once with hpSpend = 0.
-        int maxHpSpend = min(hpAvailableForTraversal, edge.swordsCost);
-        int minHpSpend = max(edge.swordsCost - turn.swords, 0);
+        int maxHpSpend = min(hpAvailableForTraversal, swordsCost);
+        int minHpSpend = max(swordsCost - turn.swords, 0);
         for (int hpSpend = minHpSpend; hpSpend <= maxHpSpend; hpSpend++) {
-          assert(hpSpend + turn.swords >= edge.swordsCost);
+          assert(hpSpend + turn.swords >= swordsCost);
           yield Traverse(
               edge: edge,
               takeItem: canTakeItemIn(edge.end),

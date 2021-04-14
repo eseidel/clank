@@ -57,6 +57,10 @@ class CardType {
   final int count;
   final int drawCards;
   final int gainGold;
+
+  final bool ignoreExhaustion;
+  final bool ignoreMonsters;
+
   final PlayEffect playEffect;
   final ConditionalPoints? pointsCondition;
   final TriggerEffects? triggers;
@@ -88,6 +92,8 @@ class CardType {
     this.gainGold = 0,
     this.othersClank = 0,
     this.teleports = 0,
+    this.ignoreExhaustion = false,
+    this.ignoreMonsters = false,
     this.playEffect = PlayEffect.none,
     this.pointsCondition,
     this.triggers,
@@ -398,8 +404,25 @@ const List<CardType> baseSetAllCardTypes = [
     triggers: EffectTriggers.archaeologist,
     skillCost: 2,
   ),
-
-  // Unique Cards
+  CardType(
+    name: 'Dead Run',
+    set: CardSet.dungeon,
+    count: 2,
+    clank: 2,
+    boots: 2,
+    ignoreExhaustion: true,
+    skillCost: 3,
+  ),
+  CardType(
+    name: 'Flying Carpet',
+    set: CardSet.dungeon,
+    count: 1,
+    points: 2,
+    boots: 2,
+    ignoreExhaustion: true,
+    ignoreMonsters: true,
+    skillCost: 6,
+  ),
   CardType(
     name: 'Brilliance',
     set: CardSet.dungeon,
