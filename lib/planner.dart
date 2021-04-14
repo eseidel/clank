@@ -84,6 +84,7 @@ class Turn {
   bool _exhausted = false; // Entered a crystal cave.
   bool ignoreExhaustion = false;
   bool ignoreMonsters = false;
+  bool gemTwoSkillDiscount = false;
   int leftoverClankReduction = 0; // always negative
   // Some cards have effects which require other conditions to complete
   // Hold them in unresolvedTriggers until they do. (e.g. Rebel Scout)
@@ -108,6 +109,13 @@ class Turn {
     boots += cardType.boots;
     swords += cardType.swords;
     teleports += cardType.teleports;
+  }
+
+  int skillCostForCard(CardType cardType) {
+    if (gemTwoSkillDiscount && cardType.isGem) {
+      return cardType.skillCost - 2;
+    }
+    return cardType.skillCost;
   }
 
   // Does this belong on board instead?
@@ -238,7 +246,7 @@ class ActionGenerator {
   Iterable<Action> possibleCardAcquisitions() sync* {
     bool canAffordAcquireCard(CardType cardType) {
       if (cardType.interaction != Interaction.buy) return false;
-      if (cardType.skillCost > turn.skill) return false;
+      if (turn.skillCostForCard(cardType) > turn.skill) return false;
       return true;
     }
 

@@ -255,7 +255,7 @@ class ClankGame {
   void executeAcquireCard(Turn turn, AcquireCard action) {
     CardType cardType = action.cardType;
     assert(cardType.interaction == Interaction.buy);
-    turn.skill -= cardType.skillCost;
+    turn.skill -= turn.skillCostForCard(cardType);
     assert(turn.skill >= 0);
     assert(cardType.swordsCost == 0);
 
@@ -327,6 +327,10 @@ class ClankGame {
     }
     if (cardType.endOfTurn != null) {
       turn.endOfTurnEffects.add(createEndOfTurnEffect(cardType.endOfTurn!));
+    }
+
+    if (cardType.specialEffect == SpecialEffect.gemTwoSkillDiscount) {
+      turn.gemTwoSkillDiscount = true;
     }
   }
 

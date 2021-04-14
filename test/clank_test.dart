@@ -981,4 +981,28 @@ void main() {
     expect(moves.length, 1); // And back, key isn't used up.
     expect(player.hasMasterKey, isTrue);
   });
+
+  test('Gem Collector', () {
+    var game = ClankGame(planners: [MockPlanner()]);
+    var board = game.board;
+    var player = game.activePlayer;
+    var turn = Turn(player: player);
+
+    board.dungeonRow = library.make('Emerald', 2);
+    var emerald = board.dungeonRow.last.type;
+    turn.skill = emerald.skillCost;
+    game.executeAction(turn, AcquireCard(cardType: emerald));
+    expect(board.clankArea.countFor(player.color), 2);
+    expect(turn.leftoverClankReduction, 0);
+    expect(turn.skill, 0);
+
+    addAndPlayCard(game, turn, 'Gem Collector');
+    expect(board.clankArea.countFor(player.color), 0);
+    expect(turn.leftoverClankReduction, 0);
+    expect(turn.skill, 2); // No refunds are issued from the previous purchase.
+
+    turn.skill = emerald.skillCost;
+    game.executeAction(turn, AcquireCard(cardType: emerald));
+    expect(turn.skill, 2); // Second purchase is 2 skill cheaper!
+  });
 }

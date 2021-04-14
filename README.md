@@ -60,3 +60,5 @@ https://boardgamegeek.com/thread/1656181/article/23992755#23992755
 ## Edge Case Questions
 * Does Treasure Hunter dungeon row replacement cause arrival effects?
 * How does Trashing interact with reshuffling?
+* Does Gem Collector give refunds (for gems purchased that turn)?
+

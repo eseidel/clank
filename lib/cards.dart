@@ -27,6 +27,11 @@ enum CardSubType {
   monster,
 }
 
+enum SpecialEffect {
+  none,
+  gemTwoSkillDiscount,
+}
+
 class CardType {
   final String name;
   final CardSet set;
@@ -63,6 +68,7 @@ class CardType {
   final bool ignoreExhaustion;
   final bool ignoreMonsters;
 
+  final SpecialEffect specialEffect;
   final QueuedEffect? queuedEffect;
   final EndOfTurn? endOfTurn;
   final ConditionalPoints? pointsCondition;
@@ -97,6 +103,7 @@ class CardType {
     this.teleports = 0,
     this.ignoreExhaustion = false,
     this.ignoreMonsters = false,
+    this.specialEffect = SpecialEffect.none,
     this.queuedEffect,
     this.endOfTurn,
     this.pointsCondition,
@@ -444,6 +451,16 @@ const List<CardType> baseSetAllCardTypes = [
     ignoreExhaustion: true,
     ignoreMonsters: true,
     skillCost: 6,
+  ),
+  CardType(
+    name: 'Gem Collector',
+    set: CardSet.dungeon,
+    count: 1,
+    points: 2,
+    skill: 2,
+    clank: -2,
+    specialEffect: SpecialEffect.gemTwoSkillDiscount,
+    skillCost: 4,
   ),
   CardType(
     name: 'Brilliance',
