@@ -127,6 +127,17 @@ enum PlayEffect {
   none,
 }
 
+// Delayed effects
+// Trash a card
+// Trash a burgle
+// Teleport
+// Replace a card in the dungeon row
+//
+
+// Maybe not delayed (no other effects on the card)
+// Discard a Card to draw 2 (not actually delayed?)
+//
+
 // Maybe this should be shared with Loot and CardType somehow?
 class Effect {
   final bool triggered;

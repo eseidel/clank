@@ -19,32 +19,35 @@ dart run bin/simulate.dart
 
 ## Issues
 * Most games end w/o escape since random planning just walks around.
+* Secret Skill boost is supposed to be immediate (not held onto)
+* Secret Gold gain should be immediate.
+* Secret draw should be immediate.
 
 ## Missing Features/Cards
 
 ### Traverse Effects
 Flying Carpet
-Dead Run
+Dead Run 2x
 
 ### Or Effects
 Wand of Wind (Also teleport)
 Underworld Dealing
 Mister Whiskers
 Apothecary
-Dragon Shrine (and trash)
-Shrine
+Dragon Shrine 2x (and trash)
+Shrine 3x
 
 ### Choose Card / Discard effects
-Sleight of Hand
-Treasure Hunter
-Master Burglar (Not really any choice, just a limited Magic Spring?)
+Sleight of Hand 2x
+Treasure Hunter 2x
+Master Burglar 2x (Not really any choice, just a limited Magic Spring?)
 
 ### Conditional effects
 Gem Collector // Do you get a refund for previously purchased gems?
 
 ### Effect Ordering / Additive Effects
-Swagger
-Search
+Swagger 2x
+Search 2x
 
 ## Designer Notes
 FAQ (2019):

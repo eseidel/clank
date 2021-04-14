@@ -827,4 +827,40 @@ void main() {
     game.executeTriggeredEffects(turn);
     expect(turn.skill, 2);
   });
+
+  test('crystal cave exhaustion', () {
+    var game = ClankGame(planners: [MockPlanner()]);
+    var board = game.board;
+    var player = game.activePlayer;
+
+    var builder = GraphBuilder();
+    var from = Space.at(0, 0);
+    var to = Space.at(0, 1, isCrystalCave: true);
+    builder.connect(from, to);
+    board.graph = Graph(start: from, allSpaces: [from, to]);
+    player.token.moveTo(from);
+
+    var turn = Turn(player: player);
+    turn.boots = 5; // plenty
+    var generator = ActionGenerator(turn, board);
+    var moves = generator.possibleMoves();
+    expect(moves.length, 1); // Move to 'to'
+    game.executeAction(turn, moves.first);
+    expect(turn.exhausted, isTrue);
+
+    moves = generator.possibleMoves();
+    expect(moves.length, 0); // No legal moves, despite having 4 boots.
+    expect(turn.boots, 4);
+
+    turn.teleports = 1;
+    moves = generator.possibleMoves();
+    expect(moves.length, 1); // Teleporting is still possible.
+    game.executeAction(turn, moves.first);
+    expect(turn.boots, 4);
+    expect(turn.exhausted, isTrue);
+
+    moves = generator.possibleMoves();
+    expect(moves.length, 0); // Even after teleporting, still exhausted.
+    expect(turn.boots, 4);
+  });
 }

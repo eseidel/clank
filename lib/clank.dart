@@ -166,6 +166,10 @@ class ClankGame {
       player.loot.add(LootToken(box.lootByName('Mastery Token')));
     }
 
+    if (action.edge.end.isCrystalCave) {
+      turn.exhausted = true;
+    }
+
     if (action.takeItem) {
       assert(player.location.loot.isNotEmpty);
       // What do we do when takeItem is a lie (there are no tokens)?
@@ -180,6 +184,7 @@ class ClankGame {
       turn.teleports -= 1;
       assert(turn.teleports >= 0);
     } else {
+      assert(!turn.exhausted, 'Not possible to spend boots once exhausted.');
       turn.boots -= edge.bootsCost;
       assert(turn.boots >= 0);
       if (action.spendHealth > 0) {

@@ -76,6 +76,7 @@ class Turn {
   // Teleport is not immediate, and can be accumulated between cards:
   // https://boardgamegeek.com/thread/1654963/article/23962792#23962792
   int teleports = 0;
+  bool exhausted = false;
   int leftoverClankReduction = 0; // always negative
   // Some cards have effects which require other conditions to complete
   // Hold them in unresolvedTriggers until they do. (e.g. Rebel Scout)
@@ -182,6 +183,7 @@ class ActionGenerator {
     bool haveResourcesFor(Edge edge, {required bool useTeleport}) {
       if (edge.requiresArtifact && !turn.player.hasArtifact) return false;
       if (useTeleport) return true;
+      if (turn.exhausted) return false;
       if (edge.requiresKey && !turn.hasKey) return false;
       if (edge.bootsCost > turn.boots) return false;
       if (edge.swordsCost > (turn.swords + hpAvailableForTraversal)) {
