@@ -255,10 +255,8 @@ class ActionExecutor {
   final Random _random;
   final ClankGame game;
 
-  // Remove all these?
+  // TODO: Remove all these?
   final Box box;
-  final List<Player> players;
-  final Player activePlayer;
   final Library library;
 
   ActionExecutor(
@@ -266,9 +264,7 @@ class ActionExecutor {
       : board = turn.board,
         _random = random,
         box = game.box,
-        library = game.library,
-        players = game.players,
-        activePlayer = turn.player;
+        library = game.library;
 
   void executeAcquireLoot(LootToken token) {
     Player player = turn.player;
@@ -373,15 +369,6 @@ class ActionExecutor {
     print('${turn.player} fought $card');
   }
 
-  void executeOthersClank(CardType cardType) {
-    // No need to adjust turn negative clank balance since its just others.
-    for (var player in players) {
-      if (player != activePlayer) {
-        board.adjustClank(player.color, cardType.othersClank);
-      }
-    }
-  }
-
   EndOfTurnEffect createEndOfTurnEffect(EndOfTurn effect) {
     switch (effect) {
       case EndOfTurn.trashPlayedBurgle:
@@ -444,7 +431,7 @@ class ActionExecutor {
       turn.player.deck.drawCards(_random, cardType.drawCards);
     }
     if (cardType.othersClank != 0) {
-      executeOthersClank(cardType);
+      game.addClankForOthers(cardType.othersClank);
     }
     turn.player.gold += cardType.gainGold;
 
@@ -568,8 +555,9 @@ class ClankGame {
   ClankGame({required List<Planner> planners, this.seed})
       : _random = Random(seed) {
     players = planners
-        .map((planner) =>
-            Player(planner: planner, deck: createStarterDeck(library)))
+        .map((planner) => Player(
+            planner: planner,
+            deck: PlayerDeck(cards: library.createStarterDeck())))
         .toList();
     setup();
     turn = Turn(player: players.first, board: board);
@@ -588,6 +576,15 @@ class ClankGame {
       if (player == activePlayer) {
         turn.adjustActivePlayerClank(clank);
       } else {
+        board.adjustClank(player.color, clank);
+      }
+    }
+  }
+
+  void addClankForOthers(int clank) {
+    // No need to adjust turn negative clank balance since its just others.
+    for (var player in players) {
+      if (player != activePlayer) {
         board.adjustClank(player.color, clank);
       }
     }
@@ -724,16 +721,6 @@ class ClankGame {
 
   int pointsForPlayer(Player player) {
     return player.calculateTotalPoints(box, library);
-  }
-
-  // Move to Libary/Box.
-  static PlayerDeck createStarterDeck(Library library) {
-    PlayerDeck deck = PlayerDeck();
-    deck.addAll(library.make('Burgle', 6));
-    deck.addAll(library.make('Stumble', 2));
-    deck.addAll(library.make('Sidestep', 1));
-    deck.addAll(library.make('Scramble', 1));
-    return deck;
   }
 
   void placeLootTokens() {

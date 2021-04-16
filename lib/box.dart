@@ -258,6 +258,15 @@ class Library {
         .map((type) => List.generate(type.count, (_) => Card._(type)));
     return dungeonCardLists.expand((element) => element);
   }
+
+  List<Card> createStarterDeck() {
+    List<Card> deck = [];
+    deck.addAll(make('Burgle', 6));
+    deck.addAll(make('Stumble', 2));
+    deck.addAll(make('Sidestep', 1));
+    deck.addAll(make('Scramble', 1));
+    return deck;
+  }
 }
 
 class LootToken extends Token {
