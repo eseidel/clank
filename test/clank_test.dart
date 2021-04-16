@@ -487,7 +487,7 @@ void main() {
         .firstWhere((edge) => edge.end == artifactRoom);
     expect(player.hasArtifact, false);
     int initialRage = game.board.rageIndex;
-    game.executeTraverse(turn, Traverse(edge: edge, takeItem: true));
+    game.executeAction(turn, Traverse(edge: edge, takeItem: true));
     expect(player.hasArtifact, true);
     expect(game.board.rageIndex, initialRage + 1);
   });
@@ -623,7 +623,7 @@ void main() {
     var turn = game.turn;
     turn.boots = 1;
     // Regardless of takeItem, a Mastery Token is awarded.
-    game.executeTraverse(turn, Traverse(edge: edge, takeItem: false));
+    game.executeAction(turn, Traverse(edge: edge, takeItem: false));
     player.hasLoot(game.box.lootByName('Mastery Token'));
     expect(game.pointsForPlayer(player), 50); // 30 + 20 for token.
     game.updatePlayerStatuses();
@@ -649,7 +649,7 @@ void main() {
     expect(turn.teleports, 2);
 
     var edge = player.location.edges.first;
-    game.executeTraverse(
+    game.executeAction(
         turn, Traverse(edge: edge, takeItem: false, useTeleport: true));
     expect(turn.teleports, 1);
     expect(turn.boots, 3);

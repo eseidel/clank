@@ -249,35 +249,26 @@ class TrashCard extends EndOfTurnEffect {
   }
 }
 
-class ClankGame {
-  late List<Player> players;
-  late Turn turn;
-  late Board board;
-  late Box box = Box();
-  final Library library = Library();
-  int? seed;
+class ActionExecutor {
+  final Turn turn;
+  final Board board;
   final Random _random;
-  bool isComplete = false;
-  Player? playerFirstOut;
-  int countdownTrackIndex = 0;
 
-  ClankGame({required List<Planner> planners, this.seed})
-      : _random = Random(seed) {
-    players = planners
-        .map((planner) =>
-            Player(planner: planner, deck: createStarterDeck(library)))
-        .toList();
-    setup();
-    turn = Turn(player: players.first, board: board);
-  }
+  // Remove all these?
+  final ClankGame game;
+  final Box box;
+  final List<Player> players;
+  final Player activePlayer;
+  final Library library;
 
-  Player nextPlayer() {
-    int index = players.indexOf(turn.player);
-    if (index == players.length - 1) return players.first;
-    return players[index + 1];
-  }
-
-  Player get activePlayer => turn.player;
+  ActionExecutor(
+      {required this.turn, required Random random, required this.game})
+      : board = turn.board,
+        _random = random,
+        box = game.box,
+        library = game.library,
+        players = game.players,
+        activePlayer = turn.player;
 
   void executeAcquireLoot(Turn turn, LootToken token) {
     Player player = turn.player;
@@ -523,7 +514,7 @@ class ClankGame {
     print('${turn.player} uses item $item');
   }
 
-  void executeAction(Turn turn, Action action) {
+  void executeAction(Action action) {
     if (action is PlayCard) {
       turn.player.deck.playCard(action.cardType);
       executeCardUseEffects(turn, action.cardType, orEffect: action.orEffect);
@@ -556,34 +547,15 @@ class ClankGame {
     if (action is ReplaceCardInDungeonRow) {
       var triggers =
           board.replaceCardInDungeonRowIgnoringDragon(action.cardType);
-      executeArrivalTriggers(triggers);
+      game.executeArrivalTriggers(triggers);
       return;
     }
     assert(false);
   }
 
-  void addClankForAll(int clank) {
-    for (var player in players) {
-      if (player == activePlayer) {
-        turn.adjustActivePlayerClank(clank);
-      } else {
-        board.adjustClank(player.color, clank);
-      }
-    }
-  }
-
   void executeEndOfTurnEffects() {
     for (var effect in turn.endOfTurnEffects) {
       effect.execute(turn);
-    }
-  }
-
-  void executeArrivalTriggers(ArrivalTriggers triggers) {
-    if (triggers.clankForAll != 0) {
-      addClankForAll(triggers.clankForAll);
-    }
-    if (triggers.refillDragonCubes != 0) {
-      board.refillDragonCubes(triggers.refillDragonCubes);
     }
   }
 
@@ -598,7 +570,7 @@ class ClankGame {
 
     // Refill the dungeon row
     ArrivalTriggers triggers = board.refillDungeonRow();
-    executeArrivalTriggers(triggers);
+    game.executeArrivalTriggers(triggers);
 
     // Triggers happen before dragon attacks.
     // https://boardgamegeek.com/thread/2380191/article/34177411#34177411
@@ -606,6 +578,64 @@ class ClankGame {
       board.dragonAttack(_random);
     }
     board.assertTotalClankCubeCounts();
+  }
+
+  void executeTriggeredEffects() {
+    var player = turn.player;
+    // This is a bit of an abuse of removeWhere.
+    turn.unresolvedTriggers.removeWhere((trigger) {
+      Effect effect = trigger(EffectTriggers(
+        haveArtifact: player.hasArtifact,
+        haveCrown: player.hasCrown,
+        haveMonkeyIdol: player.hasMonkeyIdol,
+        twoCompanionsInPlayArea: player.companionsInPlayArea > 1,
+      ));
+      if (effect.triggered) {
+        game.applyTriggeredEffect(turn, effect);
+      }
+      return effect.triggered;
+    });
+  }
+}
+
+class ClankGame {
+  late List<Player> players;
+  late Turn turn;
+  late Board board;
+  late Box box = Box();
+  final Library library = Library();
+  int? seed;
+  final Random _random;
+  bool isComplete = false;
+  Player? playerFirstOut;
+  int countdownTrackIndex = 0;
+
+  ClankGame({required List<Planner> planners, this.seed})
+      : _random = Random(seed) {
+    players = planners
+        .map((planner) =>
+            Player(planner: planner, deck: createStarterDeck(library)))
+        .toList();
+    setup();
+    turn = Turn(player: players.first, board: board);
+  }
+
+  Player nextPlayer() {
+    int index = players.indexOf(turn.player);
+    if (index == players.length - 1) return players.first;
+    return players[index + 1];
+  }
+
+  Player get activePlayer => turn.player;
+
+  void addClankForAll(int clank) {
+    for (var player in players) {
+      if (player == activePlayer) {
+        turn.adjustActivePlayerClank(clank);
+      } else {
+        board.adjustClank(player.color, clank);
+      }
+    }
   }
 
   void knockOutAllPlayersStillInGame() {
@@ -650,23 +680,6 @@ class ClankGame {
     }
   }
 
-  void executeTriggeredEffects(Turn turn) {
-    var player = turn.player;
-    // This is a bit of an abuse of removeWhere.
-    turn.unresolvedTriggers.removeWhere((trigger) {
-      Effect effect = trigger(EffectTriggers(
-        haveArtifact: player.hasArtifact,
-        haveCrown: player.hasCrown,
-        haveMonkeyIdol: player.hasMonkeyIdol,
-        twoCompanionsInPlayArea: player.companionsInPlayArea > 1,
-      ));
-      if (effect.triggered) {
-        applyTriggeredEffect(turn, effect);
-      }
-      return effect.triggered;
-    });
-  }
-
   // This probably belongs outside of the game class.
   Future<void> takeTurn() async {
     // If the player is the first-out, perform countdown turn instead.
@@ -679,14 +692,16 @@ class ClankGame {
       return;
     }
     Action action;
+    ActionExecutor executor =
+        ActionExecutor(turn: turn, game: this, random: _random);
     do {
       action = await activePlayer.planner.nextAction(turn);
       // Never trust what comes back from a plan?
-      executeAction(turn, action);
-      executeTriggeredEffects(turn);
+      executor.executeAction(action);
+      executor.executeTriggeredEffects();
       //print(turn);
     } while (!(action is EndTurn));
-    executeEndOfTurn();
+    executor.executeEndOfTurn();
     bool statusChanged = updatePlayerStatuses();
     // If players changed status, start countdown track!
     if (playerFirstOut == null && statusChanged) {
@@ -695,6 +710,21 @@ class ClankGame {
     }
     isComplete = checkForEndOfGame();
     turn = Turn(player: nextPlayer(), board: board);
+  }
+
+  // Temporary helper until refactoring complete.
+  void executeAction(Turn turn, Action action) {
+    ActionExecutor(turn: turn, game: this, random: _random)
+        .executeAction(action);
+  }
+
+  void executeTriggeredEffects(Turn turn) {
+    ActionExecutor(turn: turn, game: this, random: _random)
+        .executeTriggeredEffects();
+  }
+
+  void executeEndOfTurn() {
+    ActionExecutor(turn: turn, game: this, random: _random).executeEndOfTurn();
   }
 
   bool checkForEndOfGame() {
@@ -706,6 +736,7 @@ class ClankGame {
     return player.calculateTotalPoints(box, library);
   }
 
+  // Move to Libary/Box.
   static PlayerDeck createStarterDeck(Library library) {
     PlayerDeck deck = PlayerDeck();
     deck.addAll(library.make('Burgle', 6));
@@ -773,6 +804,15 @@ class ClankGame {
 
     var triggers = board.fillDungeonRowFirstTimeReplacingDragons(_random);
     executeArrivalTriggers(triggers); // Can add clank.
+  }
+
+  void executeArrivalTriggers(ArrivalTriggers triggers) {
+    if (triggers.clankForAll != 0) {
+      addClankForAll(triggers.clankForAll);
+    }
+    if (triggers.refillDragonCubes != 0) {
+      board.refillDragonCubes(triggers.refillDragonCubes);
+    }
   }
 }
 

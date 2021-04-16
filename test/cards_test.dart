@@ -19,7 +19,7 @@ void main() {
   void addAndPlayCard(ClankGame game, Turn turn, String name,
       {int? orEffectIndex}) {
     var card = library.make(name, 1).first;
-    turn.player.deck.hand.add(card);
+    turn.hand.add(card);
     game.executeAction(turn, PlayCard(card.type, orEffectIndex: orEffectIndex));
   }
 
