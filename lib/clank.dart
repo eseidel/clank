@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:clank/cards.dart';
 
+import 'actions.dart';
 import 'graph.dart';
 import 'planner.dart';
 import 'box.dart';
@@ -134,6 +135,101 @@ class Player {
 
   @override
   String toString() => '${colorToString(color)}';
+}
+
+// Planner can't modify turn directly?
+class Turn {
+  final Player player;
+  int skill = 0;
+  int boots = 0;
+  int swords = 0;
+  // Teleport is not immediate, and can be accumulated between cards:
+  // https://boardgamegeek.com/thread/1654963/article/23962792#23962792
+  int teleports = 0;
+  bool _exhausted = false; // Entered a crystal cave.
+  bool ignoreExhaustion = false;
+  bool ignoreMonsters = false;
+  bool gemTwoSkillDiscount = false;
+  int leftoverClankReduction = 0; // always negative
+  // Some cards have effects which require other conditions to complete
+  // Hold them in unresolvedTriggers until they do. (e.g. Rebel Scout)
+  List<TriggerEffects> unresolvedTriggers = [];
+
+  // Actions from cards which don't have to happen immediately, but must
+  // happen by end of turn.
+  List<QueuedEffect> queuedEffects = [];
+
+  // Actions which happen as result of end of turn (e.g. trashing)
+  List<EndOfTurnEffect> endOfTurnEffects = [];
+
+  Turn({required this.player});
+
+  List<Card> get hand => player.deck.hand;
+
+  void enteredCrystalCave() => _exhausted = true;
+  bool get exhausted => _exhausted && !ignoreExhaustion;
+
+  void addTurnResourcesFromCard(CardType cardType) {
+    skill += cardType.skill;
+    boots += cardType.boots;
+    swords += cardType.swords;
+    teleports += cardType.teleports;
+  }
+
+  int skillCostForCard(CardType cardType) {
+    if (gemTwoSkillDiscount && cardType.isGem) {
+      return cardType.skillCost - 2;
+    }
+    return cardType.skillCost;
+  }
+
+  // Does this belong on board instead?
+  int adjustClank(Board board, int desired) {
+    // You can't ever have both negative accumulated and a positive clank area.
+    assert(leftoverClankReduction == 0 ||
+        board.clankArea.countFor(player.color) == 0);
+    // lefover zero, desired neg ->  apply, letting leftover to remainder.
+    // leftover neg, desired neg  -> just update leftover
+    // leftover neg, desired pos  -> reduce leftover, reduce desired, apply
+    int actual = 0;
+    if (leftoverClankReduction == 0) {
+      actual = board.adjustClank(player.color, desired);
+      leftoverClankReduction = min(desired - actual, 0);
+    } else {
+      assert(leftoverClankReduction < 0);
+      // First apply to to the leftovers.
+      int reduced = desired + leftoverClankReduction;
+      if (reduced <= 0) {
+        leftoverClankReduction = reduced;
+      } else {
+        actual = board.adjustClank(player.color, reduced);
+        leftoverClankReduction = min(reduced - actual, 0);
+      }
+    }
+    return actual;
+  }
+
+  int hpAvailableForMonsterTraversals(Board board) {
+    // We can't spend more cubes than we have or available health points.
+    return min(board.playerCubeStashes.countFor(player.color),
+        board.healthForPlayer(player.color) - 1);
+  }
+
+  @override
+  String toString() {
+    return '${skill}sk ${boots}b ${swords}sw -${leftoverClankReduction}c';
+  }
+}
+
+bool cardUsableAtLocation(CardType cardType, Space location) {
+  if (cardType.location == Location.crystalCave) {
+    return location.isCrystalCave;
+  }
+  if (cardType.location == Location.deep) {
+    return location.inDepths;
+  }
+  assert(cardType.location == Location.everywhere);
+  return true;
 }
 
 abstract class EndOfTurnEffect {
