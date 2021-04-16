@@ -1,4 +1,4 @@
-import 'package:clank/clank.dart';
+import 'box.dart';
 
 class Edge {
   final Space start;

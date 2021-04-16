@@ -6,6 +6,7 @@ import 'dart:math';
 import 'clank.dart';
 import 'graph.dart';
 import 'cards.dart';
+import 'box.dart';
 
 // Responsible for making decisions, asynchronous, not trust-worthy.
 abstract class Planner {

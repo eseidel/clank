@@ -1,3 +1,4 @@
+import 'package:clank/box.dart';
 import 'package:clank/clank.dart';
 import 'package:clank/graph.dart';
 import 'package:clank/planner.dart';
