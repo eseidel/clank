@@ -70,7 +70,7 @@ void main() {
     expect(turn.boots, 1);
     expect(turn.swords, 1);
     player.loot.add(crown);
-    game.executeTriggeredEffects(turn);
+    game.executeTriggeredEffects();
     expect(turn.boots, 2);
     expect(turn.swords, 2);
   });
@@ -87,7 +87,7 @@ void main() {
     expect(turn.skill, 3);
     expect(turn.swords, 1);
     player.loot.add(crown);
-    game.executeTriggeredEffects(turn);
+    game.executeTriggeredEffects();
     expect(game.board.damageTakenByPlayer(player.color), 1);
   });
 
@@ -101,7 +101,7 @@ void main() {
     expect(turn.skill, 0);
     expect(player.gold, 2);
     player.loot.add(artifact);
-    game.executeTriggeredEffects(turn);
+    game.executeTriggeredEffects();
     expect(turn.skill, 2);
   });
 
@@ -112,26 +112,26 @@ void main() {
     addAndPlayCard(game, 'Rebel Miner');
     expect(player.deck.hand.length, 5);
     expect(player.gold, 2);
-    game.executeTriggeredEffects(turn);
+    game.executeTriggeredEffects();
     expect(player.deck.hand.length, 5);
 
     addAndPlayCard(game, 'Rebel Soldier');
     expect(player.deck.hand.length, 5);
     expect(turn.swords, 2);
-    game.executeTriggeredEffects(turn);
+    game.executeTriggeredEffects();
     expect(player.deck.hand.length, 7); // Draw for both rebels.
     expect(player.deck.hand.length, 7); // Triggering again does nothing.
 
     addAndPlayCard(game, 'Rebel Scout');
     expect(player.deck.hand.length, 7);
     expect(turn.boots, 2);
-    game.executeTriggeredEffects(turn);
+    game.executeTriggeredEffects();
     expect(player.deck.hand.length, 8); // Draw only for the new rebel.
 
     addAndPlayCard(game, 'Rebel Captain');
     expect(player.deck.hand.length, 8);
     expect(turn.skill, 2);
-    game.executeTriggeredEffects(turn);
+    game.executeTriggeredEffects();
     expect(player.deck.hand.length, 9); // Draw only for the new rebel.
   });
 
@@ -143,10 +143,10 @@ void main() {
     var turn = game.turn;
     addAndPlayCard(game, 'Wand of Recall');
     expect(turn.skill, 2);
-    game.executeTriggeredEffects(turn);
+    game.executeTriggeredEffects();
     expect(turn.teleports, 0);
     player.loot.add(artifact);
-    game.executeTriggeredEffects(turn);
+    game.executeTriggeredEffects();
     expect(turn.teleports, 1);
   });
 
@@ -160,10 +160,10 @@ void main() {
     addAndPlayCard(game, 'Archaeologist');
     expect(player.deck.hand.length, 6);
     expect(turn.skill, 0);
-    game.executeTriggeredEffects(turn);
+    game.executeTriggeredEffects();
     expect(turn.skill, 0);
     player.loot.add(monkeyIdol);
-    game.executeTriggeredEffects(turn);
+    game.executeTriggeredEffects();
     expect(turn.skill, 2);
   });
 

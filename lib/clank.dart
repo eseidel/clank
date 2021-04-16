@@ -253,9 +253,9 @@ class ActionExecutor {
   final Turn turn;
   final Board board;
   final Random _random;
+  final ClankGame game;
 
   // Remove all these?
-  final ClankGame game;
   final Box box;
   final List<Player> players;
   final Player activePlayer;
@@ -551,50 +551,6 @@ class ActionExecutor {
     }
     assert(false);
   }
-
-  void executeEndOfTurnEffects() {
-    for (var effect in turn.endOfTurnEffects) {
-      effect.execute(turn);
-    }
-  }
-
-  void executeEndOfTurn() {
-    // You must play all cards
-    assert(turn.hand.isEmpty);
-    activePlayer.deck.discardPlayAreaAndDrawNewHand(_random);
-
-    assert(turn.teleports == 0, 'Must use all teleports.');
-    assert(turn.queuedEffects.isEmpty, 'Must use all queued effects.');
-    executeEndOfTurnEffects();
-
-    // Refill the dungeon row
-    ArrivalTriggers triggers = board.refillDungeonRow();
-    game.executeArrivalTriggers(triggers);
-
-    // Triggers happen before dragon attacks.
-    // https://boardgamegeek.com/thread/2380191/article/34177411#34177411
-    if (triggers.dragonAttacks) {
-      board.dragonAttack(_random);
-    }
-    board.assertTotalClankCubeCounts();
-  }
-
-  void executeTriggeredEffects() {
-    var player = turn.player;
-    // This is a bit of an abuse of removeWhere.
-    turn.unresolvedTriggers.removeWhere((trigger) {
-      Effect effect = trigger(EffectTriggers(
-        haveArtifact: player.hasArtifact,
-        haveCrown: player.hasCrown,
-        haveMonkeyIdol: player.hasMonkeyIdol,
-        twoCompanionsInPlayArea: player.companionsInPlayArea > 1,
-      ));
-      if (effect.triggered) {
-        game.applyTriggeredEffect(effect);
-      }
-      return effect.triggered;
-    });
-  }
 }
 
 class ClankGame {
@@ -697,10 +653,10 @@ class ClankGame {
       action = await activePlayer.planner.nextAction(turn);
       // Never trust what comes back from a plan?
       executor.executeAction(action);
-      executor.executeTriggeredEffects();
+      executeTriggeredEffects();
       //print(turn);
     } while (!(action is EndTurn));
-    executor.executeEndOfTurn();
+    executeEndOfTurn();
     bool statusChanged = updatePlayerStatuses();
     // If players changed status, start countdown track!
     if (playerFirstOut == null && statusChanged) {
@@ -717,13 +673,48 @@ class ClankGame {
         .executeAction(action);
   }
 
-  void executeTriggeredEffects(Turn turn) {
-    ActionExecutor(turn: turn, game: this, random: _random)
-        .executeTriggeredEffects();
+  void executeTriggeredEffects() {
+    var player = turn.player;
+    // This is a bit of an abuse of removeWhere.
+    turn.unresolvedTriggers.removeWhere((trigger) {
+      Effect effect = trigger(EffectTriggers(
+        haveArtifact: player.hasArtifact,
+        haveCrown: player.hasCrown,
+        haveMonkeyIdol: player.hasMonkeyIdol,
+        twoCompanionsInPlayArea: player.companionsInPlayArea > 1,
+      ));
+      if (effect.triggered) {
+        applyTriggeredEffect(effect);
+      }
+      return effect.triggered;
+    });
+  }
+
+  void executeEndOfTurnEffects() {
+    for (var effect in turn.endOfTurnEffects) {
+      effect.execute(turn);
+    }
   }
 
   void executeEndOfTurn() {
-    ActionExecutor(turn: turn, game: this, random: _random).executeEndOfTurn();
+    // You must play all cards
+    assert(turn.hand.isEmpty);
+    activePlayer.deck.discardPlayAreaAndDrawNewHand(_random);
+
+    assert(turn.teleports == 0, 'Must use all teleports.');
+    assert(turn.queuedEffects.isEmpty, 'Must use all queued effects.');
+    executeEndOfTurnEffects();
+
+    // Refill the dungeon row
+    ArrivalTriggers triggers = board.refillDungeonRow();
+    executeArrivalTriggers(triggers);
+
+    // Triggers happen before dragon attacks.
+    // https://boardgamegeek.com/thread/2380191/article/34177411#34177411
+    if (triggers.dragonAttacks) {
+      board.dragonAttack(_random);
+    }
+    board.assertTotalClankCubeCounts();
   }
 
   bool checkForEndOfGame() {
