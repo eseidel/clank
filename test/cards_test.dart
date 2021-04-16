@@ -81,14 +81,14 @@ void main() {
         game.box.makeAllLootTokens().firstWhere((loot) => loot.loot.isCrown);
     var player = game.activePlayer;
     var turn = game.turn;
-    game.board.takeDamage(player.color, 2);
+    game.board.takeDamage(player, 2);
     addAndPlayCard(game, 'The Queen of Hearts');
-    expect(game.board.damageTakenByPlayer(player.color), 2);
+    expect(game.board.damageTakenBy(player), 2);
     expect(turn.skill, 3);
     expect(turn.swords, 1);
     player.loot.add(crown);
     game.executeTriggeredEffects();
-    expect(game.board.damageTakenByPlayer(player.color), 1);
+    expect(game.board.damageTakenBy(player), 1);
   });
 
   test('kobold merchant triggered effects', () {
@@ -186,7 +186,7 @@ void main() {
     expect(moves.length, 1); // Move to 'to'
     game.executeAction(moves.first);
     expect(turn.exhausted, isTrue);
-    expect(board.damageTakenByPlayer(player.color), 1); // From monster
+    expect(board.damageTakenBy(player), 1); // From monster
 
     moves = generator.possibleMoves();
     expect(moves.length, 0); // No legal moves, despite having 4 boots.
@@ -201,7 +201,7 @@ void main() {
     game.executeAction(moves.first);
     expect(turn.boots, 5);
     expect(turn.exhausted, isFalse);
-    expect(board.damageTakenByPlayer(player.color), 1); // no more dmg taken!
+    expect(board.damageTakenBy(player), 1); // no more dmg taken!
   });
 
   test('treasure hunter', () {
@@ -257,12 +257,12 @@ void main() {
     var emerald = board.dungeonRow.last.type;
     turn.skill = emerald.skillCost;
     game.executeAction(AcquireCard(cardType: emerald));
-    expect(board.clankArea.countFor(player.color), 2);
+    expect(board.clankAreaCountFor(player), 2);
     expect(turn.leftoverClankReduction, 0);
     expect(turn.skill, 0);
 
     addAndPlayCard(game, 'Gem Collector');
-    expect(board.clankArea.countFor(player.color), 0);
+    expect(board.clankAreaCountFor(player), 0);
     expect(turn.leftoverClankReduction, 0);
     expect(turn.skill, 2); // No refunds are issued from the previous purchase.
 
@@ -338,10 +338,10 @@ void main() {
     game.executeAction(UseDevice(cardType: shrine, orEffectIndex: 0));
     expect(player.gold, 1);
 
-    board.takeDamage(player.color, 2);
+    board.takeDamage(player, 2);
     turn.skill = 2;
     game.executeAction(UseDevice(cardType: shrine, orEffectIndex: 1));
-    expect(board.damageTakenByPlayer(player.color), 1);
+    expect(board.damageTakenBy(player), 1);
   });
 
   test('Mister Whiskers', () {
@@ -407,9 +407,9 @@ void main() {
     expect(player.deck.hand.length, 3);
     expect(player.deck.discardPile.length, 2);
     // 1 discard -> 1 heart
-    board.takeDamage(player.color, 2);
+    board.takeDamage(player, 2);
     addAndPlayCard(game, apothecary.name, orEffectIndex: 2);
-    expect(board.damageTakenByPlayer(player.color), 9);
+    expect(board.damageTakenBy(player), 9);
     expect(player.deck.hand.length, 2);
     expect(player.deck.discardPile.length, 3);
   }, skip: 'Apothecary unimplemented');

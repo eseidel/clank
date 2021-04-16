@@ -49,23 +49,24 @@ void main() {
     expect(board.damageTakenByPlayer(PlayerColor.blue), 0);
     expect(board.healthForPlayer(PlayerColor.blue), 10);
     expect(board.playerCubeStashes.countFor(PlayerColor.blue), 30);
-    board.takeDamage(PlayerColor.blue, 2);
+    board.takeDamageForPlayer(PlayerColor.blue, 2);
     expect(board.damageTakenByPlayer(PlayerColor.blue), 2);
     expect(board.healthForPlayer(PlayerColor.blue), 8);
     expect(board.playerCubeStashes.countFor(PlayerColor.blue), 28);
-    board.healDamage(PlayerColor.blue, 1);
+    board.healDamageForPlayer(PlayerColor.blue, 1);
     expect(board.damageTakenByPlayer(PlayerColor.blue), 1);
     expect(board.healthForPlayer(PlayerColor.blue), 9);
     expect(board.playerCubeStashes.countFor(PlayerColor.blue), 29);
-    board.healDamage(PlayerColor.blue, 2);
+    board.healDamageForPlayer(PlayerColor.blue, 2);
     expect(board.damageTakenByPlayer(PlayerColor.blue), 0);
     expect(board.healthForPlayer(PlayerColor.blue), 10);
     expect(board.playerCubeStashes.countFor(PlayerColor.blue), 30);
 
-    board.adjustClank(PlayerColor.blue, 30);
+    board.adjustClankForPlayer(PlayerColor.blue, 30);
     board.moveDragonAreaToBag();
     // Not valid to try to take damage with no cubes (should check first).
-    expect(() => board.takeDamage(PlayerColor.blue, 2), throwsArgumentError);
+    expect(() => board.takeDamageForPlayer(PlayerColor.blue, 2),
+        throwsArgumentError);
     expect(board.damageTakenByPlayer(PlayerColor.blue), 0);
     expect(board.healthForPlayer(PlayerColor.blue), 10);
     expect(board.playerCubeStashes.countFor(PlayerColor.blue), 0);
@@ -114,76 +115,72 @@ void main() {
   test('leftover negative clank', () {
     // Sources: personal stash, clank area, leftover negative, adjustmnet
 
-    int stashClankCount(Board board, Player player) =>
-        board.playerCubeStashes.countFor(player.color);
-
-    int areaClankCount(Board board, Player player) =>
-        board.clankArea.countFor(player.color);
-
     // Common-case, clank addition:
     // stash: 30, area: 0, leftover: 0, new: +2 -> stash: 28, area: 2, leftover: 0
     var game = makeGameWithPlayerCount(1);
     Board board = game.board;
-    var player = game.players.first;
     var turn = game.turn;
+    var player = turn.player;
     expect(board.clankArea.totalPlayerCubes, 0);
-    expect(stashClankCount(board, player), 30);
-    expect(areaClankCount(board, player), 0);
+    expect(board.stashCountFor(player), 30);
+    expect(board.clankAreaCountFor(player), 0);
     expect(turn.leftoverClankReduction, 0);
     turn.adjustActivePlayerClank(2);
-    expect(stashClankCount(board, player), 28);
-    expect(areaClankCount(board, player), 2);
+    expect(board.stashCountFor(player), 28);
+    expect(board.clankAreaCountFor(player), 2);
     expect(turn.leftoverClankReduction, 0);
 
     // Running out of clank in stash:
     // stash: 0, area: 30, leftover: 0, new: +2 -> stash: 0, area: 30, leftover: 0
     game = makeGameWithPlayerCount(1);
     board = game.board;
-    player = game.players.first;
+    turn = game.turn;
+    player = turn.player;
     turn.adjustActivePlayerClank(30);
-    expect(stashClankCount(board, player), 0);
-    expect(areaClankCount(board, player), 30);
+    expect(board.stashCountFor(player), 0);
+    expect(board.clankAreaCountFor(player), 30);
     expect(turn.leftoverClankReduction, 0);
 
     // Can't add clank once run out:
     turn.adjustActivePlayerClank(2);
-    expect(stashClankCount(board, player), 0);
-    expect(areaClankCount(board, player), 30);
+    expect(board.stashCountFor(player), 0);
+    expect(board.clankAreaCountFor(player), 30);
     expect(turn.leftoverClankReduction, 0);
 
     // Negative clank pulls back from clank area:
     // stash: 0, area: 30, leftover: 0, new: -2 -> stash: 2, area: 28, leftover: 0
     turn.adjustActivePlayerClank(-2);
-    expect(stashClankCount(board, player), 2);
-    expect(areaClankCount(board, player), 28);
+    expect(board.stashCountFor(player), 2);
+    expect(board.clankAreaCountFor(player), 28);
     expect(turn.leftoverClankReduction, 0);
 
     // Negative clank accumulates when area empty:
     // stash: 30, area: 0, leftover: 0, new: -2 -> stash: 30, area: 0, leftover: -2
     game = makeGameWithPlayerCount(1);
     board = game.board;
-    player = game.players.first;
+    turn = game.turn;
+    player = turn.player;
     turn.adjustActivePlayerClank(-2);
-    expect(stashClankCount(board, player), 30);
-    expect(areaClankCount(board, player), 0);
+    expect(board.stashCountFor(player), 30);
+    expect(board.clankAreaCountFor(player), 0);
     expect(turn.leftoverClankReduction, -2);
     turn.adjustActivePlayerClank(-2);
-    expect(stashClankCount(board, player), 30);
-    expect(areaClankCount(board, player), 0);
+    expect(board.stashCountFor(player), 30);
+    expect(board.clankAreaCountFor(player), 0);
     expect(turn.leftoverClankReduction, -4);
 
     // Adding clank reduces accumlated negative:
     // stash: 30, area: 0, leftover: -4, new: 2 -> stash: 30, area: 0, leftover: -2
     turn.adjustActivePlayerClank(2);
-    expect(stashClankCount(board, player), 30);
-    expect(areaClankCount(board, player), 0);
+    expect(board.stashCountFor(player), 30);
+    expect(board.clankAreaCountFor(player), 0);
     expect(turn.leftoverClankReduction, -2);
 
     // Adding clank can take you back positive:
     // stash: 30, area: 0, leftover: -2, new: 3 -> stash: 29, area: 1, leftover: 0
     turn.adjustActivePlayerClank(3);
-    expect(stashClankCount(board, player), 29);
-    expect(areaClankCount(board, player), 1);
+    expect(board.stashCountFor(player), 29);
+    expect(board.clankAreaCountFor(player), 1);
     expect(turn.leftoverClankReduction, 0);
 
     // Order of "negative clank" vs. "can't apply clank" -- NOT IN RULES
@@ -197,28 +194,29 @@ void main() {
     // - Postive Clank -> Should this now add to area?  Currently don't.
     game = makeGameWithPlayerCount(1);
     board = game.board;
-    player = game.players.first;
+    turn = game.turn;
+    player = turn.player;
     turn.adjustActivePlayerClank(30);
     board.moveDragonAreaToBag();
-    expect(stashClankCount(board, player), 0);
-    expect(areaClankCount(board, player), 0);
+    expect(board.stashCountFor(player), 0);
+    expect(board.clankAreaCountFor(player), 0);
     expect(turn.leftoverClankReduction, 0);
     turn.adjustActivePlayerClank(-2);
-    expect(stashClankCount(board, player), 0);
-    expect(areaClankCount(board, player), 0);
+    expect(board.stashCountFor(player), 0);
+    expect(board.clankAreaCountFor(player), 0);
     expect(turn.leftoverClankReduction, -2);
     // Adding clank here could be blocked for two reasons, either due to
     // no cubes in stash or negative leftover.
     turn.adjustActivePlayerClank(2);
-    expect(stashClankCount(board, player), 0);
-    expect(areaClankCount(board, player), 0);
+    expect(board.stashCountFor(player), 0);
+    expect(board.clankAreaCountFor(player), 0);
     expect(turn.leftoverClankReduction, 0); // -2 would also be reasonable.
   });
 
   test('drawCards effect', () {
     var game = makeGameWithPlayerCount(1);
-    var player = game.players.first;
     var turn = game.turn;
+    var player = turn.player;
     expect(turn.hand.length, 5);
     addAndPlayCard(game, 'Diamond'); // adds Diamond, plays = draw 1
     expect(player.deck.playArea.length, 1);
@@ -236,8 +234,8 @@ void main() {
 
   test('gainGold effect', () {
     var game = makeGameWithPlayerCount(1);
-    var player = game.players.first;
     var turn = game.turn;
+    var player = turn.player;
     expect(player.gold, 0);
     expect(turn.hand.length, 5);
     addAndPlayCard(game, 'Pickaxe'); // gain 2 gold
@@ -324,24 +322,25 @@ void main() {
 
   test('acquireHearts effect', () {
     var game = makeGameWithPlayerCount(1);
-    var player = game.players.first;
+    var turn = game.turn;
+    var player = turn.player;
+
     var board = game.board;
     board.dungeonRow.addAll(library.make('Amulet of Vigor', 2));
     var amuletOfVigor = board.dungeonRow.last.type;
-    var turn = game.turn;
 
     // Does nothing if you haven't taken damage.
-    expect(board.damageTakenByPlayer(player.color), 0);
+    expect(board.damageTakenBy(player), 0);
     turn.skill = amuletOfVigor.skillCost;
     game.executeAction(AcquireCard(cardType: amuletOfVigor));
-    expect(board.damageTakenByPlayer(player.color), 0);
+    expect(board.damageTakenBy(player), 0);
 
     // But heals one on acquire if you have.
-    board.takeDamage(player.color, 2);
-    expect(board.damageTakenByPlayer(player.color), 2);
+    board.takeDamage(player, 2);
+    expect(board.damageTakenBy(player), 2);
     turn.skill = amuletOfVigor.skillCost;
     game.executeAction(AcquireCard(cardType: amuletOfVigor));
-    expect(board.damageTakenByPlayer(player.color), 1);
+    expect(board.damageTakenBy(player), 1);
   });
 
   test('negative clank', () {
@@ -497,17 +496,17 @@ void main() {
     var player = game.activePlayer;
 
     addAndPlayCard(game, 'Stumble');
-    expect(board.playerCubeStashes.countFor(player.color), 29);
-    expect(board.clankArea.countFor(player.color), 1);
+    expect(board.stashCountFor(player), 29);
+    expect(board.clankAreaCountFor(player), 1);
     board.dungeonRow = [];
     board.dungeonDeck = library.make('Orc Grunt', 1);
     board.dragonBag.dragonCubesLeft = 0;
     player.deck.hand = [];
     game.executeEndOfTurn();
-    expect(board.healthForPlayer(player.color), 9);
-    expect(board.clankArea.countFor(player.color), 0);
-    expect(board.dragonBag.countFor(player.color), 0);
-    expect(board.playerCubeStashes.countFor(player.color), 29);
+    expect(board.healthFor(player), 9);
+    expect(board.clankAreaCountFor(player), 0);
+    expect(board.bagCountFor(player), 0);
+    expect(board.stashCountFor(player), 29);
   });
 
   test('fighting goblin', () {
@@ -544,10 +543,10 @@ void main() {
       game.executeAction(UseItem(item: item.loot));
     }
 
-    game.board.takeDamage(player.color, 9);
-    expect(game.board.damageTakenByPlayer(player.color), 9);
+    game.board.takeDamage(player, 9);
+    expect(game.board.damageTakenBy(player), 9);
     addItemAndUse('Potion of Greater Healing');
-    expect(game.board.damageTakenByPlayer(player.color), 7);
+    expect(game.board.damageTakenBy(player), 7);
     addItemAndUse('Greater Treasure');
     expect(player.gold, 5);
     addItemAndUse('Greater Skill Boost');
@@ -555,7 +554,7 @@ void main() {
     addItemAndUse('Flash of Brilliance');
     expect(player.deck.hand.length, 8);
     addItemAndUse('Potion of Healing');
-    expect(game.board.damageTakenByPlayer(player.color), 6);
+    expect(game.board.damageTakenBy(player), 6);
     addItemAndUse('Treasure');
     expect(player.gold, 7);
     addItemAndUse('Skill Boost');

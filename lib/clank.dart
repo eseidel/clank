@@ -189,14 +189,13 @@ class Turn {
   // Does this belong on board instead?
   int adjustActivePlayerClank(int desired) {
     // You can't ever have both negative accumulated and a positive clank area.
-    assert(leftoverClankReduction == 0 ||
-        board.clankArea.countFor(player.color) == 0);
+    assert(leftoverClankReduction == 0 || board.clankAreaCountFor(player) == 0);
     // lefover zero, desired neg ->  apply, letting leftover to remainder.
     // leftover neg, desired neg  -> just update leftover
     // leftover neg, desired pos  -> reduce leftover, reduce desired, apply
     int actual = 0;
     if (leftoverClankReduction == 0) {
-      actual = board.adjustClank(player.color, desired);
+      actual = board.adjustClank(player, desired);
       leftoverClankReduction = min(desired - actual, 0);
     } else {
       assert(leftoverClankReduction < 0);
@@ -205,7 +204,7 @@ class Turn {
       if (reduced <= 0) {
         leftoverClankReduction = reduced;
       } else {
-        actual = board.adjustClank(player.color, reduced);
+        actual = board.adjustClank(player, reduced);
         leftoverClankReduction = min(reduced - actual, 0);
       }
     }
@@ -214,8 +213,7 @@ class Turn {
 
   int hpAvailableForMonsterTraversals() {
     // We can't spend more cubes than we have or available health points.
-    return min(board.playerCubeStashes.countFor(player.color),
-        board.healthForPlayer(player.color) - 1);
+    return min(board.stashCountFor(player), board.healthFor(player) - 1);
   }
 
   @override
@@ -311,7 +309,7 @@ class ActionExecutor {
       if (action.spendHealth > 0) {
         assert(!turn.ignoreMonsters,
             'Not possible to spend health after ignore monsters!');
-        board.takeDamage(turn.player.color, action.spendHealth);
+        board.takeDamage(turn.player, action.spendHealth);
       }
       if (!turn.ignoreMonsters) {
         turn.swords -= (edge.swordsCost - action.spendHealth);
@@ -331,7 +329,7 @@ class ActionExecutor {
     turn.swords += card.type.acquireSwords;
     turn.boots += card.type.acquireBoots;
     if (card.type.acquireHearts != 0) {
-      board.healDamage(turn.player.color, card.type.acquireHearts);
+      board.healDamage(turn.player, card.type.acquireHearts);
     }
   }
 
@@ -408,7 +406,7 @@ class ActionExecutor {
   void executeOrEffect(OrEffect orEffect) {
     turn.player.gold += orEffect.gainGold;
     if (orEffect.hearts != 0) {
-      board.healDamage(turn.player.color, orEffect.hearts);
+      board.healDamage(turn.player, orEffect.hearts);
     }
     turn.swords += orEffect.swords;
     if (orEffect.clank != 0) {
@@ -484,7 +482,7 @@ class ActionExecutor {
     turn.player.gold += itemType.gold;
 
     if (itemType.hearts != 0) {
-      board.healDamage(turn.player.color, itemType.hearts);
+      board.healDamage(turn.player, itemType.hearts);
     }
     if (itemType.drawCards != 0) {
       turn.player.deck.drawCards(_random, itemType.drawCards);
@@ -559,8 +557,11 @@ class ClankGame {
             planner: planner,
             deck: PlayerDeck(cards: library.createStarterDeck())))
         .toList();
-    setup();
+    setupPlayersAndBoard();
+    // Set turn before filling dungeon row as it could cause clank to be
+    // distributed to all players.
     turn = Turn(player: players.first, board: board);
+    setupTokensAndCards();
   }
 
   Player nextPlayer() {
@@ -576,7 +577,7 @@ class ClankGame {
       if (player == activePlayer) {
         turn.adjustActivePlayerClank(clank);
       } else {
-        board.adjustClank(player.color, clank);
+        board.adjustClank(player, clank);
       }
     }
   }
@@ -585,7 +586,7 @@ class ClankGame {
     // No need to adjust turn negative clank balance since its just others.
     for (var player in players) {
       if (player != activePlayer) {
-        board.adjustClank(player.color, clank);
+        board.adjustClank(player, clank);
       }
     }
   }
@@ -628,7 +629,7 @@ class ClankGame {
       turn.player.deck.drawCards(_random, effect.drawCards);
     }
     if (effect.hearts > 0) {
-      board.healDamage(turn.player.color, effect.hearts);
+      board.healDamage(turn.player, effect.hearts);
     }
   }
 
@@ -753,7 +754,7 @@ class ClankGame {
     // var monkeyTokenSpaces = spacesWithSpecial(Special.monkeyShrine);
   }
 
-  void setup() {
+  void setupPlayersAndBoard() {
     // Each player is dealt a hand in the constructor currently.
     for (var player in players) {
       player.deck.discardPlayAreaAndDrawNewHand(_random);
@@ -771,6 +772,9 @@ class ClankGame {
       player.token = PlayerToken();
       player.token.moveTo(board.graph.start);
     }
+  }
+
+  void setupTokensAndCards() {
     placeLootTokens();
     // Fill reserve.
     board.reserve = Reserve(library);
@@ -890,6 +894,21 @@ Iterable<T> uniqueValues<T>(Iterable<T> values) {
   return seen;
 }
 
+extension PlayerBoard on Board {
+  void takeDamage(Player player, int amount) =>
+      takeDamageForPlayer(player.color, amount);
+  void healDamage(Player player, amount) =>
+      healDamageForPlayer(player.color, amount);
+  int adjustClank(Player player, int amount) =>
+      adjustClankForPlayer(player.color, amount);
+  int damageTakenBy(Player player) => damageTakenByPlayer(player.color);
+  int healthFor(Player player) => healthForPlayer(player.color);
+  int stashCountFor(Player player) => playerCubeStashes.countFor(player.color);
+  int clankAreaCountFor(Player player) => clankArea.countFor(player.color);
+  int bagCountFor(Player player) => dragonBag.countFor(player.color);
+}
+
+// Intentionally does not know about Player object only PlayerColor.
 class Board {
   static const int playerMaxHealth = 10;
   static const int dragonMaxCubeCount = 24;
@@ -972,7 +991,7 @@ class Board {
   int healthForPlayer(PlayerColor color) =>
       playerMaxHealth - damageTakenByPlayer(color);
 
-  void takeDamage(PlayerColor color, int amount) {
+  void takeDamageForPlayer(PlayerColor color, int amount) {
     // It is *not* OK to call this if you can't take damage.
     // All damage sources are by-choice, other than the dragon
     // And the dragon gives cubes when taking damage.
@@ -983,14 +1002,14 @@ class Board {
     playerDamageTaken.addTo(color, amount);
   }
 
-  int healDamage(PlayerColor color, int amount) {
+  int healDamageForPlayer(PlayerColor color, int amount) {
     // It's OK to call this even if you can't heal.
     int healed = playerDamageTaken.takeFrom(color, amount);
     playerCubeStashes.addTo(color, healed);
     return healed;
   }
 
-  int adjustClank(PlayerColor color, int amount) {
+  int adjustClankForPlayer(PlayerColor color, int amount) {
     assert(amount != 0);
     if (amount > 0) {
       int takenCount = playerCubeStashes.takeFrom(color, amount);
