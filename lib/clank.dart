@@ -270,15 +270,15 @@ class ActionExecutor {
         players = game.players,
         activePlayer = turn.player;
 
-  void executeAcquireLoot(Turn turn, LootToken token) {
+  void executeAcquireLoot(LootToken token) {
     Player player = turn.player;
     assert(!token.isArtifact || player.canTakeArtifact);
-    executeAcquireLootEffects(turn, token);
+    executeAcquireLootEffects(token);
     print('$player loots $token');
     player.takeLoot(token);
   }
 
-  void executeRoomEntryEffects(Turn turn, Traverse action) {
+  void executeRoomEntryEffects(Traverse action) {
     // print('$player moved: ${edge.end}');
     var player = turn.player;
 
@@ -299,11 +299,11 @@ class ActionExecutor {
       assert(player.location.loot.isNotEmpty);
       // What do we do when takeItem is a lie (there are no tokens)?
       var token = player.location.loot.first;
-      executeAcquireLoot(turn, token);
+      executeAcquireLoot(token);
     }
   }
 
-  void executeTraverse(Turn turn, Traverse action) {
+  void executeTraverse(Traverse action) {
     Edge edge = action.edge;
     if (action.useTeleport) {
       turn.teleports -= 1;
@@ -325,10 +325,10 @@ class ActionExecutor {
 
     Player player = turn.player;
     player.token.moveTo(edge.end);
-    executeRoomEntryEffects(turn, action);
+    executeRoomEntryEffects(action);
   }
 
-  void executeAcquireCardEffects(Turn turn, Card card) {
+  void executeAcquireCardEffects(Card card) {
     if (card.type.acquireClank != 0) {
       turn.adjustActivePlayerClank(card.type.acquireClank);
     }
@@ -339,13 +339,13 @@ class ActionExecutor {
     }
   }
 
-  void executeAcquireLootEffects(Turn turn, LootToken token) {
+  void executeAcquireLootEffects(LootToken token) {
     if (token.loot.acquireRage != 0) {
       board.increaseDragonRage(token.loot.acquireRage);
     }
   }
 
-  void executeAcquireCard(Turn turn, AcquireCard action) {
+  void executeAcquireCard(AcquireCard action) {
     CardType cardType = action.cardType;
     assert(cardType.interaction == Interaction.buy);
     turn.skill -= turn.skillCostForCard(cardType);
@@ -354,11 +354,11 @@ class ActionExecutor {
 
     Card card = board.takeCard(cardType);
     turn.player.deck.add(card);
-    executeAcquireCardEffects(turn, card);
+    executeAcquireCardEffects(card);
     print('${turn.player} acquires $card');
   }
 
-  void executeFight(Turn turn, Fight action) {
+  void executeFight(Fight action) {
     CardType cardType = action.cardType;
     assert(cardType.interaction == Interaction.fight);
     turn.swords -= cardType.swordsCost;
@@ -369,7 +369,7 @@ class ActionExecutor {
     if (!card.type.neverDiscards) {
       board.dungeonDiscard.add(card);
     }
-    executeCardUseEffects(turn, action.cardType, orEffect: null);
+    executeCardUseEffects(action.cardType, orEffect: null);
     print('${turn.player} fought $card');
   }
 
@@ -389,7 +389,7 @@ class ActionExecutor {
     }
   }
 
-  void executeOrSpecial(Turn turn, OrSpecial special) {
+  void executeOrSpecial(OrSpecial special) {
     switch (special) {
       case OrSpecial.dragonAttack:
         board.dragonAttack(_random);
@@ -418,7 +418,7 @@ class ActionExecutor {
     }
   }
 
-  void executeOrEffect(Turn turn, OrEffect orEffect) {
+  void executeOrEffect(OrEffect orEffect) {
     turn.player.gold += orEffect.gainGold;
     if (orEffect.hearts != 0) {
       board.healDamage(turn.player.color, orEffect.hearts);
@@ -429,13 +429,12 @@ class ActionExecutor {
     }
     OrSpecial? special = orEffect.special;
     if (special != null) {
-      executeOrSpecial(turn, special);
+      executeOrSpecial(special);
     }
   }
 
   // Used by both PlayCard and Fight.
-  void executeCardUseEffects(Turn turn, CardType cardType,
-      {required OrEffect? orEffect}) {
+  void executeCardUseEffects(CardType cardType, {required OrEffect? orEffect}) {
     assert(cardUsableAtLocation(cardType, turn.player.location));
     turn.addTurnResourcesFromCard(cardType);
     if (cardType.clank != 0) {
@@ -472,11 +471,11 @@ class ActionExecutor {
     }
 
     if (orEffect != null) {
-      executeOrEffect(turn, orEffect);
+      executeOrEffect(orEffect);
     }
   }
 
-  void executeUseDevice(Turn turn, UseDevice action) {
+  void executeUseDevice(UseDevice action) {
     CardType cardType = action.cardType;
     assert(cardType.interaction == Interaction.use);
     turn.skill -= cardType.skillCost;
@@ -485,11 +484,11 @@ class ActionExecutor {
 
     Card card = board.takeCard(cardType);
     board.dungeonDiscard.add(card);
-    executeCardUseEffects(turn, cardType, orEffect: action.orEffect);
+    executeCardUseEffects(cardType, orEffect: action.orEffect);
     print('${turn.player} uses device $card');
   }
 
-  void executeItemUseEffects(Turn turn, Loot itemType) {
+  void executeItemUseEffects(Loot itemType) {
     assert(itemType.usable);
 
     turn.swords += itemType.swords;
@@ -505,42 +504,42 @@ class ActionExecutor {
     }
   }
 
-  void executeUseItem(Turn turn, UseItem action) {
+  void executeUseItem(UseItem action) {
     Loot itemType = action.item;
     assert(itemType.usable);
     var item = turn.player.useItem(itemType);
     board.usedItems.add(item);
-    executeItemUseEffects(turn, itemType);
+    executeItemUseEffects(itemType);
     print('${turn.player} uses item $item');
   }
 
   void executeAction(Action action) {
     if (action is PlayCard) {
       turn.player.deck.playCard(action.cardType);
-      executeCardUseEffects(turn, action.cardType, orEffect: action.orEffect);
+      executeCardUseEffects(action.cardType, orEffect: action.orEffect);
       return;
     }
     if (action is EndTurn) {
       return;
     }
     if (action is Traverse) {
-      executeTraverse(turn, action);
+      executeTraverse(action);
       return;
     }
     if (action is AcquireCard) {
-      executeAcquireCard(turn, action);
+      executeAcquireCard(action);
       return;
     }
     if (action is Fight) {
-      executeFight(turn, action);
+      executeFight(action);
       return;
     }
     if (action is UseDevice) {
-      executeUseDevice(turn, action);
+      executeUseDevice(action);
       return;
     }
     if (action is UseItem) {
-      executeUseItem(turn, action);
+      executeUseItem(action);
       return;
     }
     // Should this really be its own action subclass?
@@ -591,7 +590,7 @@ class ActionExecutor {
         twoCompanionsInPlayArea: player.companionsInPlayArea > 1,
       ));
       if (effect.triggered) {
-        game.applyTriggeredEffect(turn, effect);
+        game.applyTriggeredEffect(effect);
       }
       return effect.triggered;
     });
@@ -666,7 +665,7 @@ class ClankGame {
     return changedStatus;
   }
 
-  void applyTriggeredEffect(Turn turn, Effect effect) {
+  void applyTriggeredEffect(Effect effect) {
     assert(effect.triggered);
     turn.skill += effect.skill;
     turn.boots += effect.boots;
@@ -713,7 +712,7 @@ class ClankGame {
   }
 
   // Temporary helper until refactoring complete.
-  void executeAction(Turn turn, Action action) {
+  void executeAction(Action action) {
     ActionExecutor(turn: turn, game: this, random: _random)
         .executeAction(action);
   }

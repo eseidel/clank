@@ -16,11 +16,10 @@ void main() {
 
   CardType cardType(String name) => library.cardTypeByName(name);
 
-  void addAndPlayCard(ClankGame game, Turn turn, String name,
-      {int? orEffectIndex}) {
-    var card = library.make(name, 1).first;
-    turn.hand.add(card);
-    game.executeAction(turn, PlayCard(card.type, orEffectIndex: orEffectIndex));
+  void addAndPlayCard(ClankGame game, String name, {int? orEffectIndex}) {
+    var card = game.library.make(name, 1).first;
+    game.turn.hand.add(card);
+    game.executeAction(PlayCard(card.type, orEffectIndex: orEffectIndex));
   }
 
   test('conditional points dwarven peddler', () {
@@ -66,7 +65,7 @@ void main() {
         game.box.makeAllLootTokens().firstWhere((loot) => loot.loot.isCrown);
     var player = game.activePlayer;
     Turn turn = game.turn;
-    addAndPlayCard(game, turn, 'The Mountain King');
+    addAndPlayCard(game, 'The Mountain King');
     expect(turn.skill, 2);
     expect(turn.boots, 1);
     expect(turn.swords, 1);
@@ -83,7 +82,7 @@ void main() {
     var player = game.activePlayer;
     var turn = game.turn;
     game.board.takeDamage(player.color, 2);
-    addAndPlayCard(game, turn, 'The Queen of Hearts');
+    addAndPlayCard(game, 'The Queen of Hearts');
     expect(game.board.damageTakenByPlayer(player.color), 2);
     expect(turn.skill, 3);
     expect(turn.swords, 1);
@@ -98,7 +97,7 @@ void main() {
         game.box.makeAllLootTokens().firstWhere((loot) => loot.isArtifact);
     var player = game.activePlayer;
     var turn = game.turn;
-    addAndPlayCard(game, turn, 'Kobold Merchant');
+    addAndPlayCard(game, 'Kobold Merchant');
     expect(turn.skill, 0);
     expect(player.gold, 2);
     player.loot.add(artifact);
@@ -110,26 +109,26 @@ void main() {
     var game = makeGameWithPlayerCount(1);
     var player = game.activePlayer;
     var turn = game.turn;
-    addAndPlayCard(game, turn, 'Rebel Miner');
+    addAndPlayCard(game, 'Rebel Miner');
     expect(player.deck.hand.length, 5);
     expect(player.gold, 2);
     game.executeTriggeredEffects(turn);
     expect(player.deck.hand.length, 5);
 
-    addAndPlayCard(game, turn, 'Rebel Soldier');
+    addAndPlayCard(game, 'Rebel Soldier');
     expect(player.deck.hand.length, 5);
     expect(turn.swords, 2);
     game.executeTriggeredEffects(turn);
     expect(player.deck.hand.length, 7); // Draw for both rebels.
     expect(player.deck.hand.length, 7); // Triggering again does nothing.
 
-    addAndPlayCard(game, turn, 'Rebel Scout');
+    addAndPlayCard(game, 'Rebel Scout');
     expect(player.deck.hand.length, 7);
     expect(turn.boots, 2);
     game.executeTriggeredEffects(turn);
     expect(player.deck.hand.length, 8); // Draw only for the new rebel.
 
-    addAndPlayCard(game, turn, 'Rebel Captain');
+    addAndPlayCard(game, 'Rebel Captain');
     expect(player.deck.hand.length, 8);
     expect(turn.skill, 2);
     game.executeTriggeredEffects(turn);
@@ -142,7 +141,7 @@ void main() {
         game.box.makeAllLootTokens().firstWhere((loot) => loot.isArtifact);
     var player = game.activePlayer;
     var turn = game.turn;
-    addAndPlayCard(game, turn, 'Wand of Recall');
+    addAndPlayCard(game, 'Wand of Recall');
     expect(turn.skill, 2);
     game.executeTriggeredEffects(turn);
     expect(turn.teleports, 0);
@@ -158,7 +157,7 @@ void main() {
     var player = game.activePlayer;
     var turn = game.turn;
     expect(player.deck.hand.length, 5);
-    addAndPlayCard(game, turn, 'Archaeologist');
+    addAndPlayCard(game, 'Archaeologist');
     expect(player.deck.hand.length, 6);
     expect(turn.skill, 0);
     game.executeTriggeredEffects(turn);
@@ -185,7 +184,7 @@ void main() {
     var generator = ActionGenerator(turn);
     var moves = generator.possibleMoves();
     expect(moves.length, 1); // Move to 'to'
-    game.executeAction(turn, moves.first);
+    game.executeAction(moves.first);
     expect(turn.exhausted, isTrue);
     expect(board.damageTakenByPlayer(player.color), 1); // From monster
 
@@ -193,13 +192,13 @@ void main() {
     expect(moves.length, 0); // No legal moves, despite having 4 boots.
     expect(turn.boots, 4);
 
-    addAndPlayCard(game, turn, 'Flying Carpet');
+    addAndPlayCard(game, 'Flying Carpet');
     expect(turn.exhausted, isFalse);
     expect(turn.boots, 6);
     moves = generator.possibleMoves();
     expect(moves.length, 1); // No longer exhausted!
 
-    game.executeAction(turn, moves.first);
+    game.executeAction(moves.first);
     expect(turn.boots, 5);
     expect(turn.exhausted, isFalse);
     expect(board.damageTakenByPlayer(player.color), 1); // no more dmg taken!
@@ -210,14 +209,14 @@ void main() {
     var board = game.board;
     var turn = game.turn;
 
-    addAndPlayCard(game, turn, 'Treasure Hunter');
+    addAndPlayCard(game, 'Treasure Hunter');
     expect(turn.skill, 2);
     expect(turn.swords, 2);
     expect(turn.queuedEffects.length, 1);
     // Cards with complex actions are split into two.
     var possibleActions = ActionGenerator(turn).possibleQueuedEffects();
     expect(possibleActions.length, 6); // One per card (no duplicates);
-    game.executeAction(turn, possibleActions.first);
+    game.executeAction(possibleActions.first);
     expect(board.dungeonDiscard.length, 1);
     expect(board.dungeonRow.length, 6);
     expect(board.dragonBag.totalCubes, 24); // No attacks were made.
@@ -228,9 +227,9 @@ void main() {
     var board = game.board;
     var turn = game.turn;
     board.dungeonDeck = game.library.make('Watcher', 1);
-    addAndPlayCard(game, turn, 'Treasure Hunter');
+    addAndPlayCard(game, 'Treasure Hunter');
     var possibleActions = ActionGenerator(turn).possibleQueuedEffects();
-    game.executeAction(turn, possibleActions.first);
+    game.executeAction(possibleActions.first);
     expect(board.clankArea.totalPlayerCubes, 1); // Arrival clank triggers.
   });
   test('Master Burglar', () {
@@ -238,7 +237,7 @@ void main() {
     var player = game.activePlayer;
     var turn = game.turn;
 
-    addAndPlayCard(game, turn, 'Master Burglar');
+    addAndPlayCard(game, 'Master Burglar');
     expect(turn.skill, 2);
     expect(player.deck.cardCount, 11); // Starter + one Master Burglar.
     // Starting with 6 burgles, one will always be in the first hand.
@@ -257,38 +256,35 @@ void main() {
     board.dungeonRow = library.make('Emerald', 2);
     var emerald = board.dungeonRow.last.type;
     turn.skill = emerald.skillCost;
-    game.executeAction(turn, AcquireCard(cardType: emerald));
+    game.executeAction(AcquireCard(cardType: emerald));
     expect(board.clankArea.countFor(player.color), 2);
     expect(turn.leftoverClankReduction, 0);
     expect(turn.skill, 0);
 
-    addAndPlayCard(game, turn, 'Gem Collector');
+    addAndPlayCard(game, 'Gem Collector');
     expect(board.clankArea.countFor(player.color), 0);
     expect(turn.leftoverClankReduction, 0);
     expect(turn.skill, 2); // No refunds are issued from the previous purchase.
 
     turn.skill = emerald.skillCost;
-    game.executeAction(turn, AcquireCard(cardType: emerald));
+    game.executeAction(AcquireCard(cardType: emerald));
     expect(turn.skill, 2); // Second purchase is 2 skill cheaper!
   });
 
   test('Underworld Dealing', () {
     var game = makeGameWithPlayerCount(1);
     var player = game.activePlayer;
-    var turn = game.turn;
 
     var underWorldDealing = cardType('Underworld Dealing');
-    addAndPlayCard(game, turn, underWorldDealing.name, orEffectIndex: 0);
+    addAndPlayCard(game, underWorldDealing.name, orEffectIndex: 0);
     expect(player.gold, 1);
 
     // Not allowed to play the second effect w/o the gold for it.
-    expect(
-        () => addAndPlayCard(game, turn, underWorldDealing.name,
-            orEffectIndex: 1),
+    expect(() => addAndPlayCard(game, underWorldDealing.name, orEffectIndex: 1),
         throwsArgumentError);
 
     player.gold = 7;
-    addAndPlayCard(game, turn, underWorldDealing.name, orEffectIndex: 1);
+    addAndPlayCard(game, underWorldDealing.name, orEffectIndex: 1);
     expect(player.gold, 0);
     expect(player.deck.discardPile.length, 2);
   });
@@ -300,7 +296,7 @@ void main() {
     var turn = game.turn;
 
     var wandOfWind = cardType('Wand of Wind');
-    addAndPlayCard(game, turn, wandOfWind.name, orEffectIndex: 0);
+    addAndPlayCard(game, wandOfWind.name, orEffectIndex: 0);
     expect(turn.teleports, 1);
 
     var builder = GraphBuilder();
@@ -313,7 +309,7 @@ void main() {
     board.graph = Graph(start: from, allSpaces: [from, to]);
     player.token.moveTo(from);
 
-    addAndPlayCard(game, turn, wandOfWind.name, orEffectIndex: 1);
+    addAndPlayCard(game, wandOfWind.name, orEffectIndex: 1);
     expect(player.loot.length, 1);
 
     // Artifacts are not secrets and can't be grabbed.
@@ -326,7 +322,7 @@ void main() {
     board.graph = Graph(start: from, allSpaces: [from, to]);
     player.token.moveTo(from);
 
-    expect(() => addAndPlayCard(game, turn, wandOfWind.name, orEffectIndex: 1),
+    expect(() => addAndPlayCard(game, wandOfWind.name, orEffectIndex: 1),
         throwsArgumentError);
   }, skip: 'Unimplemented');
 
@@ -339,12 +335,12 @@ void main() {
     var shrine = cardType('Shrine');
     board.dungeonRow = library.make('Shrine', 2);
     turn.skill = 2;
-    game.executeAction(turn, UseDevice(cardType: shrine, orEffectIndex: 0));
+    game.executeAction(UseDevice(cardType: shrine, orEffectIndex: 0));
     expect(player.gold, 1);
 
     board.takeDamage(player.color, 2);
     turn.skill = 2;
-    game.executeAction(turn, UseDevice(cardType: shrine, orEffectIndex: 1));
+    game.executeAction(UseDevice(cardType: shrine, orEffectIndex: 1));
     expect(board.damageTakenByPlayer(player.color), 1);
   });
 
@@ -358,13 +354,13 @@ void main() {
     expect(board.clankArea.totalPlayerCubes, 2);
     expect(board.dragonBag.totalCubes, 24);
     expect(board.cubeCountForNormalDragonAttack(), 3);
-    addAndPlayCard(game, turn, mrWhiskers.name, orEffectIndex: 0);
+    addAndPlayCard(game, mrWhiskers.name, orEffectIndex: 0);
     expect(board.dragonBag.totalCubes, 23); // 24 + 2 - 3 = 23
     expect(board.clankArea.totalPlayerCubes, 0);
     // Might have might have taken damage depending on random.
 
     expect(turn.leftoverClankReduction, 0);
-    addAndPlayCard(game, turn, mrWhiskers.name, orEffectIndex: 1);
+    addAndPlayCard(game, mrWhiskers.name, orEffectIndex: 1);
     expect(turn.leftoverClankReduction, -2);
   });
 
@@ -379,15 +375,13 @@ void main() {
     board.dungeonRow = library.make('Dragon Shrine', 2);
     expect(board.cubeCountForNormalDragonAttack(), 5); // +1 danger from each
     turn.skill = 4;
-    game.executeAction(
-        turn, UseDevice(cardType: dragonShrine, orEffectIndex: 0));
+    game.executeAction(UseDevice(cardType: dragonShrine, orEffectIndex: 0));
     expect(player.gold, 2);
     expect(board.cubeCountForNormalDragonAttack(), 4);
     expect(board.dungeonDiscard.length, 1);
 
     turn.skill = 4;
-    game.executeAction(
-        turn, UseDevice(cardType: dragonShrine, orEffectIndex: 1));
+    game.executeAction(UseDevice(cardType: dragonShrine, orEffectIndex: 1));
     expect(player.deck.cardCount, 10); // 10 starter cards.
     player.deck.discardPile.addAll(player.deck.hand);
     player.deck.hand = [];
@@ -403,18 +397,18 @@ void main() {
 
     var apothecary = cardType('Apothecary');
     // 1 discard -> 3 swords
-    addAndPlayCard(game, turn, apothecary.name, orEffectIndex: 0);
+    addAndPlayCard(game, apothecary.name, orEffectIndex: 0);
     expect(turn.swords, 3);
     expect(player.deck.hand.length, 4);
     expect(player.deck.discardPile.length, 1);
     // 1 discard -> 2 gold
-    addAndPlayCard(game, turn, apothecary.name, orEffectIndex: 1);
+    addAndPlayCard(game, apothecary.name, orEffectIndex: 1);
     expect(player.gold, 2);
     expect(player.deck.hand.length, 3);
     expect(player.deck.discardPile.length, 2);
     // 1 discard -> 1 heart
     board.takeDamage(player.color, 2);
-    addAndPlayCard(game, turn, apothecary.name, orEffectIndex: 2);
+    addAndPlayCard(game, apothecary.name, orEffectIndex: 2);
     expect(board.damageTakenByPlayer(player.color), 9);
     expect(player.deck.hand.length, 2);
     expect(player.deck.discardPile.length, 3);

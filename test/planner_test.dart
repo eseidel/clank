@@ -13,11 +13,10 @@ void main() {
         planners: List.generate(count, (index) => MockPlanner()), seed: 10);
   }
 
-  void addAndPlayCard(ClankGame game, Turn turn, String name,
-      {int? orEffectIndex}) {
-    var card = library.make(name, 1).first;
-    turn.player.deck.hand.add(card);
-    game.executeAction(turn, PlayCard(card.type, orEffectIndex: orEffectIndex));
+  void addAndPlayCard(ClankGame game, String name, {int? orEffectIndex}) {
+    var card = game.library.make(name, 1).first;
+    game.turn.hand.add(card);
+    game.executeAction(PlayCard(card.type, orEffectIndex: orEffectIndex));
   }
 
   test('consider moves which involve spending health', () {
@@ -61,7 +60,7 @@ void main() {
     var generator = ActionGenerator(turn);
     var moves = generator.possibleMoves();
     expect(moves.length, 1); // Move to 'to'
-    game.executeAction(turn, moves.first);
+    game.executeAction(moves.first);
     expect(turn.exhausted, isTrue);
 
     moves = generator.possibleMoves();
@@ -71,7 +70,7 @@ void main() {
     turn.teleports = 1;
     moves = generator.possibleMoves();
     expect(moves.length, 1); // Teleporting is still possible.
-    game.executeAction(turn, moves.first);
+    game.executeAction(moves.first);
     expect(turn.boots, 4);
     expect(turn.exhausted, isTrue);
 
@@ -79,7 +78,7 @@ void main() {
     expect(moves.length, 0); // Even after teleporting, still exhausted.
     expect(turn.boots, 4);
 
-    addAndPlayCard(game, turn, 'Dead Run');
+    addAndPlayCard(game, 'Dead Run');
     expect(turn.exhausted, isFalse);
     expect(turn.boots, 6);
     moves = generator.possibleMoves();
@@ -112,7 +111,7 @@ void main() {
     expect(player.hasMasterKey, isTrue);
     moves = generator.possibleMoves();
     expect(moves.length, 1); // Can now go through edge!
-    game.executeAction(turn, moves.first);
+    game.executeAction(moves.first);
     expect(turn.boots, 4);
     moves = generator.possibleMoves();
     expect(moves.length, 1); // And back, key isn't used up.

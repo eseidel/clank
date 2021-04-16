@@ -15,11 +15,10 @@ void main() {
         planners: List.generate(count, (index) => MockPlanner()), seed: 10);
   }
 
-  void addAndPlayCard(ClankGame game, Turn turn, String name,
-      {int? orEffectIndex}) {
-    var card = library.make(name, 1).first;
-    turn.player.deck.hand.add(card);
-    game.executeAction(turn, PlayCard(card.type, orEffectIndex: orEffectIndex));
+  void addAndPlayCard(ClankGame game, String name, {int? orEffectIndex}) {
+    var card = game.library.make(name, 1).first;
+    game.turn.hand.add(card);
+    game.executeAction(PlayCard(card.type, orEffectIndex: orEffectIndex));
   }
 
   test('deck shuffles when empty', () {
@@ -94,11 +93,11 @@ void main() {
     var game = makeGameWithPlayerCount(1);
     var turn = game.turn;
     expect(game.board.clankArea.totalPlayerCubes, 0);
-    addAndPlayCard(game, turn, 'Stumble');
+    addAndPlayCard(game, 'Stumble');
     expect(turn.leftoverClankReduction, 0);
     expect(game.board.clankArea.totalPlayerCubes, 1);
 
-    addAndPlayCard(game, turn, 'Move Silently');
+    addAndPlayCard(game, 'Move Silently');
     expect(turn.leftoverClankReduction, -1);
     expect(game.board.clankArea.totalPlayerCubes, 0);
   });
@@ -221,15 +220,15 @@ void main() {
     var player = game.players.first;
     var turn = game.turn;
     expect(turn.hand.length, 5);
-    addAndPlayCard(game, turn, 'Diamond'); // adds Diamond, plays = draw 1
+    addAndPlayCard(game, 'Diamond'); // adds Diamond, plays = draw 1
     expect(player.deck.playArea.length, 1);
     expect(turn.hand.length, 6);
-    addAndPlayCard(game, turn, 'Brilliance'); // draw 3
+    addAndPlayCard(game, 'Brilliance'); // draw 3
     expect(player.deck.playArea.length, 2);
     expect(turn.hand.length, 9);
     expect(player.deck.drawPile.length, 1);
     expect(player.deck.discardPile.length, 0);
-    addAndPlayCard(game, turn, 'Brilliance'); // draw 3
+    addAndPlayCard(game, 'Brilliance'); // draw 3
     expect(player.deck.playArea.length, 3);
     expect(player.deck.drawPile.length, 0);
     expect(turn.hand.length, 10);
@@ -241,11 +240,11 @@ void main() {
     var turn = game.turn;
     expect(player.gold, 0);
     expect(turn.hand.length, 5);
-    addAndPlayCard(game, turn, 'Pickaxe'); // gain 2 gold
+    addAndPlayCard(game, 'Pickaxe'); // gain 2 gold
     expect(turn.hand.length, 5);
     expect(player.deck.playArea.length, 1);
     expect(player.gold, 2);
-    addAndPlayCard(game, turn, 'Treasure Map'); // gain 5 gold
+    addAndPlayCard(game, 'Treasure Map'); // gain 5 gold
     expect(turn.hand.length, 5);
     expect(player.deck.playArea.length, 2);
     expect(player.gold, 7);
@@ -295,7 +294,7 @@ void main() {
     var turn = game.turn;
     turn.skill = emerald.skillCost;
     expect(board.clankArea.totalPlayerCubes, 0);
-    game.executeAction(turn, AcquireCard(cardType: emerald));
+    game.executeAction(AcquireCard(cardType: emerald));
     expect(board.clankArea.totalPlayerCubes, 2);
   });
 
@@ -307,7 +306,7 @@ void main() {
     var turn = game.turn;
     turn.skill = silverSpear.skillCost;
     expect(turn.swords, 0);
-    game.executeAction(turn, AcquireCard(cardType: silverSpear));
+    game.executeAction(AcquireCard(cardType: silverSpear));
     expect(turn.swords, 1);
   });
 
@@ -319,7 +318,7 @@ void main() {
     var turn = game.turn;
     turn.skill = bootsOfSwiftness.skillCost;
     expect(turn.boots, 0);
-    game.executeAction(turn, AcquireCard(cardType: bootsOfSwiftness));
+    game.executeAction(AcquireCard(cardType: bootsOfSwiftness));
     expect(turn.boots, 1);
   });
 
@@ -334,14 +333,14 @@ void main() {
     // Does nothing if you haven't taken damage.
     expect(board.damageTakenByPlayer(player.color), 0);
     turn.skill = amuletOfVigor.skillCost;
-    game.executeAction(turn, AcquireCard(cardType: amuletOfVigor));
+    game.executeAction(AcquireCard(cardType: amuletOfVigor));
     expect(board.damageTakenByPlayer(player.color), 0);
 
     // But heals one on acquire if you have.
     board.takeDamage(player.color, 2);
     expect(board.damageTakenByPlayer(player.color), 2);
     turn.skill = amuletOfVigor.skillCost;
-    game.executeAction(turn, AcquireCard(cardType: amuletOfVigor));
+    game.executeAction(AcquireCard(cardType: amuletOfVigor));
     expect(board.damageTakenByPlayer(player.color), 1);
   });
 
@@ -349,11 +348,11 @@ void main() {
     var game = makeGameWithPlayerCount(1);
     var turn = game.turn;
     expect(game.board.clankArea.totalPlayerCubes, 0);
-    addAndPlayCard(game, turn, 'Stumble');
+    addAndPlayCard(game, 'Stumble');
     expect(turn.leftoverClankReduction, 0);
     expect(game.board.clankArea.totalPlayerCubes, 1);
 
-    addAndPlayCard(game, turn, 'Move Silently');
+    addAndPlayCard(game, 'Move Silently');
     expect(turn.leftoverClankReduction, -1);
     expect(game.board.clankArea.totalPlayerCubes, 0);
   });
@@ -444,7 +443,7 @@ void main() {
     board.dungeonRow = library.make('Kobold', 1);
     var turn = game.turn;
     turn.swords = 1;
-    game.executeAction(turn, Fight(cardType: board.dungeonRow.first.type));
+    game.executeAction(Fight(cardType: board.dungeonRow.first.type));
     expect(board.dungeonDiscard.length, 1);
     expect(board.dungeonRow.length, 0);
     expect(turn.skill, 1);
@@ -457,7 +456,7 @@ void main() {
     board.dungeonRow = library.make('Ladder', 1);
     var turn = game.turn;
     turn.skill = 3;
-    game.executeAction(turn, UseDevice(cardType: board.dungeonRow.first.type));
+    game.executeAction(UseDevice(cardType: board.dungeonRow.first.type));
     expect(board.dungeonDiscard.length, 1);
     expect(board.dungeonRow.length, 0);
     expect(turn.boots, 2);
@@ -487,7 +486,7 @@ void main() {
         .firstWhere((edge) => edge.end == artifactRoom);
     expect(player.hasArtifact, false);
     int initialRage = game.board.rageIndex;
-    game.executeAction(turn, Traverse(edge: edge, takeItem: true));
+    game.executeAction(Traverse(edge: edge, takeItem: true));
     expect(player.hasArtifact, true);
     expect(game.board.rageIndex, initialRage + 1);
   });
@@ -497,8 +496,7 @@ void main() {
     var board = game.board;
     var player = game.activePlayer;
 
-    var turn = game.turn;
-    addAndPlayCard(game, turn, 'Stumble');
+    addAndPlayCard(game, 'Stumble');
     expect(board.playerCubeStashes.countFor(player.color), 29);
     expect(board.clankArea.countFor(player.color), 1);
     board.dungeonRow = [];
@@ -522,12 +520,12 @@ void main() {
     turn.swords = 4;
     expect(player.gold, 0);
     expect(board.availableCardTypes.contains(goblin), isTrue);
-    game.executeAction(turn, Fight(cardType: goblin));
+    game.executeAction(Fight(cardType: goblin));
     expect(turn.swords, 2);
     expect(player.gold, 1);
     expect(board.availableCardTypes.contains(goblin), isTrue);
     // It's possible to fight the goblin repeatedly.
-    game.executeAction(turn, Fight(cardType: goblin));
+    game.executeAction(Fight(cardType: goblin));
     expect(turn.swords, 0);
     expect(player.gold, 2);
     expect(board.availableCardTypes.contains(goblin), isTrue);
@@ -543,7 +541,7 @@ void main() {
     void addItemAndUse(String name) {
       var item = allItems.firstWhere((item) => item.loot.name == name);
       player.loot.add(item);
-      game.executeAction(turn, UseItem(item: item.loot));
+      game.executeAction(UseItem(item: item.loot));
     }
 
     game.board.takeDamage(player.color, 9);
@@ -623,7 +621,7 @@ void main() {
     var turn = game.turn;
     turn.boots = 1;
     // Regardless of takeItem, a Mastery Token is awarded.
-    game.executeAction(turn, Traverse(edge: edge, takeItem: false));
+    game.executeAction(Traverse(edge: edge, takeItem: false));
     player.hasLoot(game.box.lootByName('Mastery Token'));
     expect(game.pointsForPlayer(player), 50); // 30 + 20 for token.
     game.updatePlayerStatuses();
@@ -642,15 +640,15 @@ void main() {
     turn.boots = 3;
     expect(turn.teleports, 0);
     // Test use-device teleports
-    game.executeAction(turn, UseDevice(cardType: board.dungeonRow.first.type));
+    game.executeAction(UseDevice(cardType: board.dungeonRow.first.type));
     expect(turn.teleports, 1);
     // Play card teleports work too
-    addAndPlayCard(game, turn, 'Invoker of the Ancients');
+    addAndPlayCard(game, 'Invoker of the Ancients');
     expect(turn.teleports, 2);
 
     var edge = player.location.edges.first;
     game.executeAction(
-        turn, Traverse(edge: edge, takeItem: false, useTeleport: true));
+        Traverse(edge: edge, takeItem: false, useTeleport: true));
     expect(turn.teleports, 1);
     expect(turn.boots, 3);
   });
