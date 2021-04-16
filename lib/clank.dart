@@ -644,7 +644,8 @@ class ClankGame {
     ActionExecutor executor =
         ActionExecutor(turn: turn, game: this, random: _random);
     do {
-      action = await activePlayer.planner.nextAction(turn);
+      ActionGenerator generator = ActionGenerator(turn);
+      action = await activePlayer.planner.nextAction(generator);
       // Never trust what comes back from a plan?
       executor.executeAction(action);
       executeTriggeredEffects();
