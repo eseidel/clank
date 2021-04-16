@@ -7,17 +7,17 @@ import 'package:clank/planner.dart';
 import 'package:test/test.dart';
 
 void main() {
-  Library library = Library();
+  Box box = Box();
 
   ClankGame makeGameWithPlayerCount(int count) {
     return ClankGame(
         planners: List.generate(count, (index) => MockPlanner()), seed: 10);
   }
 
-  CardType cardType(String name) => library.cardTypeByName(name);
+  CardType cardType(String name) => box.cardTypeByName(name);
 
   void addAndPlayCard(ClankGame game, String name, {int? orEffectIndex}) {
-    var card = game.library.make(name, 1).first;
+    var card = game.box.make(name, 1).first;
     game.turn.hand.add(card);
     game.executeAction(PlayCard(card.type, orEffectIndex: orEffectIndex));
   }
@@ -28,7 +28,7 @@ void main() {
     var allLoot = game.box.makeAllLootTokens();
 
     void addCard(String name) {
-      var card = library.make(name, 1).first;
+      var card = box.make(name, 1).first;
       player.deck.hand.add(card);
     }
 
@@ -226,7 +226,7 @@ void main() {
     var game = makeGameWithPlayerCount(1);
     var board = game.board;
     var turn = game.turn;
-    board.dungeonDeck = game.library.make('Watcher', 1);
+    board.dungeonDeck = game.box.make('Watcher', 1);
     addAndPlayCard(game, 'Treasure Hunter');
     var possibleActions = ActionGenerator(turn).possibleQueuedEffects();
     game.executeAction(possibleActions.first);
@@ -245,7 +245,7 @@ void main() {
     player.deck.hand = [];
     game.executeEndOfTurn();
     expect(player.deck.cardCount, 10); // One burgle gone.
-    expect(player.countOfCards(game.library.cardTypeByName('Burgle')), 5);
+    expect(player.countOfCards(game.box.cardTypeByName('Burgle')), 5);
   });
   test('Gem Collector', () {
     var game = makeGameWithPlayerCount(1);
@@ -253,7 +253,7 @@ void main() {
     var player = game.activePlayer;
     var turn = game.turn;
 
-    board.dungeonRow = library.make('Emerald', 2);
+    board.dungeonRow = box.make('Emerald', 2);
     var emerald = board.dungeonRow.last.type;
     turn.skill = emerald.skillCost;
     game.executeAction(AcquireCard(cardType: emerald));
@@ -333,7 +333,7 @@ void main() {
     var turn = game.turn;
 
     var shrine = cardType('Shrine');
-    board.dungeonRow = library.make('Shrine', 2);
+    board.dungeonRow = box.make('Shrine', 2);
     turn.skill = 2;
     game.executeAction(UseDevice(cardType: shrine, orEffectIndex: 0));
     expect(player.gold, 1);
@@ -372,7 +372,7 @@ void main() {
 
     var dragonShrine = cardType('Dragon Shrine');
     expect(board.cubeCountForNormalDragonAttack(), 3);
-    board.dungeonRow = library.make('Dragon Shrine', 2);
+    board.dungeonRow = box.make('Dragon Shrine', 2);
     expect(board.cubeCountForNormalDragonAttack(), 5); // +1 danger from each
     turn.skill = 4;
     game.executeAction(UseDevice(cardType: dragonShrine, orEffectIndex: 0));

@@ -113,7 +113,7 @@ class Player {
     return false;
   }
 
-  int calculateTotalPoints(Box box, Library library) {
+  int calculateTotalPoints(box) {
     // Zero score if you get knocked out while still in the depths.
     if (status == PlayerStatus.knockedOut && location.inDepths) {
       return 0;
@@ -121,7 +121,7 @@ class Player {
     int total = 0;
     var conditions = PointsConditions(
       gold: gold,
-      secretTomeCount: countOfCards(library.cardTypeByName('Secret Tome')),
+      secretTomeCount: countOfCards(box.cardTypeByName('Secret Tome')),
       hasMasteryToken: hasLoot(box.lootByName('Mastery Token')),
       hasChalice: hasLoot(box.lootByName('Chalice')),
       hasDragonEgg: hasLoot(box.lootByName('Dragon Egg')),
@@ -255,14 +255,12 @@ class ActionExecutor {
 
   // TODO: Remove all these?
   final Box box;
-  final Library library;
 
   ActionExecutor(
       {required this.turn, required Random random, required this.game})
       : board = turn.board,
         _random = random,
-        box = game.box,
-        library = game.library;
+        box = game.box;
 
   void executeAcquireLoot(LootToken token) {
     Player player = turn.player;
@@ -370,7 +368,7 @@ class ActionExecutor {
   EndOfTurnEffect createEndOfTurnEffect(EndOfTurn effect) {
     switch (effect) {
       case EndOfTurn.trashPlayedBurgle:
-        return TrashCard(library.cardTypeByName('Burgle'));
+        return TrashCard(box.cardTypeByName('Burgle'));
     }
   }
 
@@ -384,7 +382,7 @@ class ActionExecutor {
           throw ArgumentError('7 gold required.');
         }
         turn.player.gold -= 7;
-        var secretTome = library.cardTypeByName('Secret Tome');
+        var secretTome = box.cardTypeByName('Secret Tome');
         var cards = [
           board.reserve.takeCard(secretTome),
           board.reserve.takeCard(secretTome)
@@ -542,8 +540,7 @@ class ClankGame {
   late List<Player> players;
   late Turn turn;
   late Board board;
-  late Box box = Box();
-  final Library library = Library();
+  final Box box = Box();
   int? seed;
   final Random _random;
   bool isComplete = false;
@@ -554,8 +551,7 @@ class ClankGame {
       : _random = Random(seed) {
     players = planners
         .map((planner) => Player(
-            planner: planner,
-            deck: PlayerDeck(cards: library.createStarterDeck())))
+            planner: planner, deck: PlayerDeck(cards: box.createStarterDeck())))
         .toList();
     setupPlayersAndBoard();
     // Set turn before filling dungeon row as it could cause clank to be
@@ -721,7 +717,7 @@ class ClankGame {
   }
 
   int pointsForPlayer(Player player) {
-    return player.calculateTotalPoints(box, library);
+    return player.calculateTotalPoints(box);
   }
 
   void placeLootTokens() {
@@ -777,9 +773,9 @@ class ClankGame {
   void setupTokensAndCards() {
     placeLootTokens();
     // Fill reserve.
-    board.reserve = Reserve(library);
+    board.reserve = Reserve(box);
 
-    board.dungeonDeck = library.makeDungeonDeck().toList();
+    board.dungeonDeck = box.makeDungeonDeck().toList();
     // Set Rage level
     board.setRageLevelForNumberOfPlayers(players.length);
 

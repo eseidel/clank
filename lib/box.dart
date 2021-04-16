@@ -155,51 +155,14 @@ List<Loot> allLootDescriptions = const [
   Loot.special(name: 'Monkey Idol', count: 3, points: 5),
 ];
 
-// TODO: Merge this with library?
-class Box {
-  // 7 Artifacts
-  // 11 major secrets
-  // - 3 challice (7 pts)
-  // - 2 2x heart bottles
-  // - 2 5 gold
-  // - 2 5 skill
-  // - 2 flash of brilliance (draw 3)
-  // 18 minor secrets
-  // - 3 dragon egg (3 points)
-  // - 3 heal 1
-  // - 3 2 gold
-  // - 3 2 skill
-  // - 2 2 swords
-  // - 2 trash card (at end of turn)
-  // - 2 1 boot
-  // 2 master keys
-  // 2 backpacks
-  // 3 crowns
-  // 3 monkey idols
-  // 4 mastery tokens
-  // Gold (81 total)
-  // Gold is meant to be unlimited: https://boardgamegeek.com/thread/1729908/article/25115604#25115604
-  // - 12 5 gold
-  // - 21 1 gold
-
-  Iterable<LootToken> makeAllLootTokens() {
-    return allLootDescriptions
-        .map((loot) => List.generate(loot.count, (_) => LootToken(loot)))
-        .expand((element) => element);
-  }
-
-  Loot lootByName(String name) =>
-      allLootDescriptions.firstWhere((type) => type.name == name);
-}
-
 class Reserve {
   final List<List<Card>> piles;
-  Reserve(Library library)
+  Reserve(Box box)
       : piles = [
-          library.makeAll('Mercenary'),
-          library.makeAll('Explore'),
-          library.makeAll('Secret Tome'),
-          library.makeAll('Goblin'),
+          box.makeAll('Mercenary'),
+          box.makeAll('Explore'),
+          box.makeAll('Secret Tome'),
+          box.makeAll('Goblin'),
         ];
 
   Iterable<CardType> get availableCardTypes sync* {
@@ -239,7 +202,7 @@ class Card {
   String toString() => type.name;
 }
 
-class Library {
+class Box {
   CardType cardTypeByName(String name) =>
       baseSetAllCardTypes.firstWhere((type) => type.name == name);
 
@@ -267,6 +230,40 @@ class Library {
     deck.addAll(make('Scramble', 1));
     return deck;
   }
+
+  // 7 Artifacts
+  // 11 major secrets
+  // - 3 challice (7 pts)
+  // - 2 2x heart bottles
+  // - 2 5 gold
+  // - 2 5 skill
+  // - 2 flash of brilliance (draw 3)
+  // 18 minor secrets
+  // - 3 dragon egg (3 points)
+  // - 3 heal 1
+  // - 3 2 gold
+  // - 3 2 skill
+  // - 2 2 swords
+  // - 2 trash card (at end of turn)
+  // - 2 1 boot
+  // 2 master keys
+  // 2 backpacks
+  // 3 crowns
+  // 3 monkey idols
+  // 4 mastery tokens
+  // Gold (81 total)
+  // Gold is meant to be unlimited: https://boardgamegeek.com/thread/1729908/article/25115604#25115604
+  // - 12 5 gold
+  // - 21 1 gold
+
+  Iterable<LootToken> makeAllLootTokens() {
+    return allLootDescriptions
+        .map((loot) => List.generate(loot.count, (_) => LootToken(loot)))
+        .expand((element) => element);
+  }
+
+  Loot lootByName(String name) =>
+      allLootDescriptions.firstWhere((type) => type.name == name);
 }
 
 class LootToken extends Token {

@@ -8,7 +8,7 @@ import 'package:clank/planner.dart';
 import 'package:test/test.dart';
 
 void main() {
-  Library library = Library();
+  Box box = Box();
 
   ClankGame makeGameWithPlayerCount(int count) {
     return ClankGame(
@@ -16,7 +16,7 @@ void main() {
   }
 
   void addAndPlayCard(ClankGame game, String name, {int? orEffectIndex}) {
-    var card = game.library.make(name, 1).first;
+    var card = game.box.make(name, 1).first;
     game.turn.hand.add(card);
     game.executeAction(PlayCard(card.type, orEffectIndex: orEffectIndex));
   }
@@ -25,9 +25,9 @@ void main() {
     PlayerDeck deck = PlayerDeck();
     expect(deck.cardCount, 0);
     expect(deck.discardPlayAreaAndDrawNewHand(Random(0), 1), 0);
-    deck.addAll(library.make('Burgle', 1));
+    deck.addAll(box.make('Burgle', 1));
     expect(deck.cardCount, 1);
-    deck.addAll(library.make('Burgle', 5));
+    deck.addAll(box.make('Burgle', 5));
     expect(deck.cardCount, 6);
     expect(deck.hand.length, 0);
     expect(deck.discardPile.length, 6);
@@ -104,7 +104,7 @@ void main() {
   });
 
   test('drawCards edgecase', () {
-    PlayerDeck deck = PlayerDeck(cards: library.make('Burgle', 3));
+    PlayerDeck deck = PlayerDeck(cards: box.make('Burgle', 3));
     Random random = Random(0);
     deck.drawCards(random, 2);
     expect(deck.hand.length, 2);
@@ -278,16 +278,16 @@ void main() {
   test('dragon attack cube count with danger', () {
     var twoPlayer = makeGameWithPlayerCount(2);
     expect(twoPlayer.board.cubeCountForNormalDragonAttack(), 3);
-    twoPlayer.board.dungeonRow = library.make('Kobold', 1);
+    twoPlayer.board.dungeonRow = box.make('Kobold', 1);
     expect(twoPlayer.board.cubeCountForNormalDragonAttack(), 4);
-    twoPlayer.board.dungeonRow = library.make('Kobold', 2);
+    twoPlayer.board.dungeonRow = box.make('Kobold', 2);
     expect(twoPlayer.board.cubeCountForNormalDragonAttack(), 5);
   });
 
   test('acquireClank effect', () {
     var game = makeGameWithPlayerCount(1);
     var board = game.board;
-    board.dungeonRow.addAll(library.make('Emerald', 1));
+    board.dungeonRow.addAll(box.make('Emerald', 1));
     var emerald = board.dungeonRow.last.type;
     var turn = game.turn;
     turn.skill = emerald.skillCost;
@@ -299,7 +299,7 @@ void main() {
   test('acquireSwords effect', () {
     var game = makeGameWithPlayerCount(1);
     var board = game.board;
-    board.dungeonRow.addAll(library.make('Silver Spear', 1));
+    board.dungeonRow.addAll(box.make('Silver Spear', 1));
     var silverSpear = board.dungeonRow.last.type;
     var turn = game.turn;
     turn.skill = silverSpear.skillCost;
@@ -311,7 +311,7 @@ void main() {
   test('acquireBoots effect', () {
     var game = makeGameWithPlayerCount(1);
     var board = game.board;
-    board.dungeonRow.addAll(library.make('Boots of Swiftness', 1));
+    board.dungeonRow.addAll(box.make('Boots of Swiftness', 1));
     var bootsOfSwiftness = board.dungeonRow.last.type;
     var turn = game.turn;
     turn.skill = bootsOfSwiftness.skillCost;
@@ -326,7 +326,7 @@ void main() {
     var player = turn.player;
 
     var board = game.board;
-    board.dungeonRow.addAll(library.make('Amulet of Vigor', 2));
+    board.dungeonRow.addAll(box.make('Amulet of Vigor', 2));
     var amuletOfVigor = board.dungeonRow.last.type;
 
     // Does nothing if you haven't taken damage.
@@ -361,24 +361,24 @@ void main() {
     var board = game.board;
     // Refill works, dragonRevealed is false for non-dragon cards.
     board.dungeonRow = [];
-    board.dungeonDeck = library.make('Move Silently', 6); // no dragon
+    board.dungeonDeck = box.make('Move Silently', 6); // no dragon
     bool dragonRevealed = board.refillDungeonRow().dragonAttacks;
     expect(dragonRevealed, false);
     expect(board.dungeonRow.length, 6);
 
     // Revealing a dragon shows dragonRevealed (also testing partial refill)
     board.dungeonRow.removeRange(0, 3);
-    board.dungeonDeck = library.make('MonkeyBot 3000', 1); // dragon!
+    board.dungeonDeck = box.make('MonkeyBot 3000', 1); // dragon!
     dragonRevealed = board.refillDungeonRow().dragonAttacks;
     expect(dragonRevealed, true);
     expect(board.dungeonRow.length, 4);
 
-    board.dungeonDeck = library.make('MonkeyBot 3000', 1); // dragon!
+    board.dungeonDeck = box.make('MonkeyBot 3000', 1); // dragon!
     dragonRevealed = board.refillDungeonRow().dragonAttacks;
     expect(dragonRevealed, true);
     expect(board.dungeonRow.length, 5);
 
-    board.dungeonDeck = library.make('Move Silently', 6); // no dragon
+    board.dungeonDeck = box.make('Move Silently', 6); // no dragon
     dragonRevealed = board.refillDungeonRow().dragonAttacks;
     expect(dragonRevealed, false);
     expect(board.dungeonRow.length, 6);
@@ -389,13 +389,13 @@ void main() {
     var board = game.board;
     // Refill works, dragonRevealed is false for non-dragon cards.
     board.dungeonRow = [];
-    board.dungeonDeck = library.make('Overlord', 1); // arrival clank, no dragon
+    board.dungeonDeck = box.make('Overlord', 1); // arrival clank, no dragon
     ArrivalTriggers triggers = board.refillDungeonRow();
     expect(triggers.dragonAttacks, false);
     expect(triggers.clankForAll, 1);
     expect(board.dungeonRow.length, 1);
 
-    board.dungeonDeck = library.make('Overlord', 2); // arrival clank, no dragon
+    board.dungeonDeck = box.make('Overlord', 2); // arrival clank, no dragon
     triggers = board.refillDungeonRow();
     expect(triggers.dragonAttacks, false);
     expect(triggers.clankForAll, 2);
@@ -406,15 +406,15 @@ void main() {
     var game = makeGameWithPlayerCount(2);
     var board = game.board;
     board.dungeonRow = [];
-    board.dungeonDeck = library.make('Overlord', 1); // arrival clank, no dragon
+    board.dungeonDeck = box.make('Overlord', 1); // arrival clank, no dragon
     expect(board.clankArea.totalPlayerCubes, 0);
     game.activePlayer.deck.hand = []; // avoid assert in executeEndOfTurn.
     game.executeEndOfTurn();
     expect(board.clankArea.totalPlayerCubes, 2);
     expect(board.dungeonRow.length, 1);
 
-    board.dungeonDeck = library.make('Overlord', 1); // arrival clank, no dragon
-    board.dungeonDeck.addAll(library.make('Animated Door', 1)); // dragon!
+    board.dungeonDeck = box.make('Overlord', 1); // arrival clank, no dragon
+    board.dungeonDeck.addAll(box.make('Animated Door', 1)); // dragon!
     game.activePlayer.deck.hand = []; // avoid assert in executeEndOfTurn.
     game.executeEndOfTurn();
     expect(board.clankArea.totalPlayerCubes, 0);
@@ -439,7 +439,7 @@ void main() {
   test('fight monsters', () {
     var game = makeGameWithPlayerCount(1);
     var board = game.board;
-    board.dungeonRow = library.make('Kobold', 1);
+    board.dungeonRow = box.make('Kobold', 1);
     var turn = game.turn;
     turn.swords = 1;
     game.executeAction(Fight(cardType: board.dungeonRow.first.type));
@@ -452,7 +452,7 @@ void main() {
   test('use device', () {
     var game = makeGameWithPlayerCount(1);
     var board = game.board;
-    board.dungeonRow = library.make('Ladder', 1);
+    board.dungeonRow = box.make('Ladder', 1);
     var turn = game.turn;
     turn.skill = 3;
     game.executeAction(UseDevice(cardType: board.dungeonRow.first.type));
@@ -499,7 +499,7 @@ void main() {
     expect(board.stashCountFor(player), 29);
     expect(board.clankAreaCountFor(player), 1);
     board.dungeonRow = [];
-    board.dungeonDeck = library.make('Orc Grunt', 1);
+    board.dungeonDeck = box.make('Orc Grunt', 1);
     board.dragonBag.dragonCubesLeft = 0;
     player.deck.hand = [];
     game.executeEndOfTurn();
@@ -514,7 +514,7 @@ void main() {
     var board = game.board;
     var player = game.activePlayer;
 
-    var goblin = library.cardTypeByName('Goblin');
+    var goblin = box.cardTypeByName('Goblin');
     var turn = game.turn;
     turn.swords = 4;
     expect(player.gold, 0);
@@ -573,7 +573,7 @@ void main() {
     var allLoot = game.box.makeAllLootTokens();
 
     void addCard(String name) {
-      var card = library.make(name, 1).first;
+      var card = box.make(name, 1).first;
       player.deck.hand.add(card);
     }
 
@@ -633,7 +633,7 @@ void main() {
     var game = makeGameWithPlayerCount(1);
     var player = game.activePlayer;
     var board = game.board;
-    board.dungeonRow = library.make('Teleporter', 1);
+    board.dungeonRow = box.make('Teleporter', 1);
     var turn = game.turn;
     turn.skill = 4;
     turn.boots = 3;
@@ -657,7 +657,7 @@ void main() {
     var board = game.board;
     expect(board.clankArea.totalPlayerCubes, 0); // Random seed has none.
 
-    board.dungeonDeck = game.library.make('Watcher', 6);
+    board.dungeonDeck = game.box.make('Watcher', 6);
     board.dungeonRow = [];
     var triggers = board.fillDungeonRowFirstTimeReplacingDragons(Random());
     expect(triggers.clankForAll, 6); // Arrival clank triggers.
@@ -665,7 +665,7 @@ void main() {
 
   test('unique values', () {
     var game = makeGameWithPlayerCount(1);
-    game.board.dungeonRow = game.library.make('Master Burglar', 3);
+    game.board.dungeonRow = game.box.make('Master Burglar', 3);
     expect(game.board.availableCardTypes.length, 5); // 1 for row, 4 on reserve.
   });
 
@@ -676,7 +676,7 @@ void main() {
     board.dungeonRow = [];
 
     expect(board.dragonBag.dragonCubesLeft, 24);
-    board.dungeonDeck = library.make('Shrine', 1);
+    board.dungeonDeck = box.make('Shrine', 1);
     ArrivalTriggers triggers = board.refillDungeonRow();
     expect(board.dungeonRow.length, 1);
     game.executeArrivalTriggers(triggers);
@@ -684,7 +684,7 @@ void main() {
     expect(board.dragonBag.dragonCubesLeft, 24);
 
     board.dragonBag.dragonCubesLeft = 10;
-    board.dungeonDeck = library.make('Shrine', 1);
+    board.dungeonDeck = box.make('Shrine', 1);
     triggers = board.refillDungeonRow();
     expect(board.dungeonRow.length, 2);
     game.executeArrivalTriggers(triggers);
@@ -692,7 +692,7 @@ void main() {
     expect(board.dragonBag.dragonCubesLeft, 13);
 
     board.dragonBag.dragonCubesLeft = 10;
-    board.dungeonDeck = library.make('Shrine', 2);
+    board.dungeonDeck = box.make('Shrine', 2);
     triggers = board.refillDungeonRow();
     expect(board.dungeonRow.length, 4);
     game.executeArrivalTriggers(triggers);

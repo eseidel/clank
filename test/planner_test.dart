@@ -6,7 +6,7 @@ import 'package:clank/planner.dart';
 import 'package:test/test.dart';
 
 void main() {
-  Library library = Library();
+  Box box = Box();
 
   ClankGame makeGameWithPlayerCount(int count) {
     return ClankGame(
@@ -14,7 +14,7 @@ void main() {
   }
 
   void addAndPlayCard(ClankGame game, String name, {int? orEffectIndex}) {
-    var card = game.library.make(name, 1).first;
+    var card = game.box.make(name, 1).first;
     game.turn.hand.add(card);
     game.executeAction(PlayCard(card.type, orEffectIndex: orEffectIndex));
   }
@@ -129,26 +129,26 @@ void main() {
     var plays = generator.possibleCardPlays();
     expect(plays.length, 0);
 
-    player.deck.hand = library.make('Burgle', 5);
+    player.deck.hand = box.make('Burgle', 5);
     plays = generator.possibleCardPlays();
     expect(plays.length, 1); // Only consider one play per card type.
 
-    player.deck.hand = library.make('Mister Whiskers', 1);
+    player.deck.hand = box.make('Mister Whiskers', 1);
     plays = generator.possibleCardPlays();
     expect(plays.length, 2); // Multiple considered plays for OR types.
 
-    // player.deck.hand = library.make('Apothecary', 1);
+    // player.deck.hand = box.make('Apothecary', 1);
     // plays = generator.possibleCardPlays();
     // expect(plays.length, 1); // Only one play when conditions can't be met.
 
-    // player.deck.hand = library.make('Apothecary', 1);
-    // player.deck.hand.addAll(library.make('Burgle', 2));
+    // player.deck.hand = box.make('Apothecary', 1);
+    // player.deck.hand.addAll(box.make('Burgle', 2));
     // plays = generator.possibleCardPlays();
     // expect(plays.length, 5); // 2 burgle + 3 apothecary options
 
-    // player.deck.hand = library.make('Apothecary', 1);
-    // player.deck.hand.addAll(library.make('Burgle', 1));
-    // player.deck.hand.addAll(library.make('Stumble', 1));
+    // player.deck.hand = box.make('Apothecary', 1);
+    // player.deck.hand.addAll(box.make('Burgle', 1));
+    // player.deck.hand.addAll(box.make('Stumble', 1));
 
     // plays = generator.possibleCardPlays();
     // expect(plays.length, 8); // 2 burgle + 2 x 3 apothecary options.
