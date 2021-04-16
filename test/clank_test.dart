@@ -99,7 +99,7 @@ void main() {
 
   test('negative clank', () {
     var game = makeGameWithPlayerCount(1);
-    Turn turn = Turn(player: game.players.first);
+    var turn = game.turn;
     expect(game.board.clankArea.totalPlayerCubes, 0);
     addAndPlayCard(game, turn, 'Stumble');
     expect(turn.leftoverClankReduction, 0);
@@ -127,12 +127,12 @@ void main() {
     var game = makeGameWithPlayerCount(1);
     Board board = game.board;
     var player = game.players.first;
-    Turn turn = Turn(player: player);
+    var turn = game.turn;
     expect(board.clankArea.totalPlayerCubes, 0);
     expect(stashClankCount(board, player), 30);
     expect(areaClankCount(board, player), 0);
     expect(turn.leftoverClankReduction, 0);
-    turn.adjustClank(board, 2);
+    turn.adjustClank(2);
     expect(stashClankCount(board, player), 28);
     expect(areaClankCount(board, player), 2);
     expect(turn.leftoverClankReduction, 0);
@@ -142,20 +142,20 @@ void main() {
     game = makeGameWithPlayerCount(1);
     board = game.board;
     player = game.players.first;
-    turn.adjustClank(board, 30);
+    turn.adjustClank(30);
     expect(stashClankCount(board, player), 0);
     expect(areaClankCount(board, player), 30);
     expect(turn.leftoverClankReduction, 0);
 
     // Can't add clank once run out:
-    turn.adjustClank(board, 2);
+    turn.adjustClank(2);
     expect(stashClankCount(board, player), 0);
     expect(areaClankCount(board, player), 30);
     expect(turn.leftoverClankReduction, 0);
 
     // Negative clank pulls back from clank area:
     // stash: 0, area: 30, leftover: 0, new: -2 -> stash: 2, area: 28, leftover: 0
-    turn.adjustClank(board, -2);
+    turn.adjustClank(-2);
     expect(stashClankCount(board, player), 2);
     expect(areaClankCount(board, player), 28);
     expect(turn.leftoverClankReduction, 0);
@@ -165,25 +165,25 @@ void main() {
     game = makeGameWithPlayerCount(1);
     board = game.board;
     player = game.players.first;
-    turn.adjustClank(board, -2);
+    turn.adjustClank(-2);
     expect(stashClankCount(board, player), 30);
     expect(areaClankCount(board, player), 0);
     expect(turn.leftoverClankReduction, -2);
-    turn.adjustClank(board, -2);
+    turn.adjustClank(-2);
     expect(stashClankCount(board, player), 30);
     expect(areaClankCount(board, player), 0);
     expect(turn.leftoverClankReduction, -4);
 
     // Adding clank reduces accumlated negative:
     // stash: 30, area: 0, leftover: -4, new: 2 -> stash: 30, area: 0, leftover: -2
-    turn.adjustClank(board, 2);
+    turn.adjustClank(2);
     expect(stashClankCount(board, player), 30);
     expect(areaClankCount(board, player), 0);
     expect(turn.leftoverClankReduction, -2);
 
     // Adding clank can take you back positive:
     // stash: 30, area: 0, leftover: -2, new: 3 -> stash: 29, area: 1, leftover: 0
-    turn.adjustClank(board, 3);
+    turn.adjustClank(3);
     expect(stashClankCount(board, player), 29);
     expect(areaClankCount(board, player), 1);
     expect(turn.leftoverClankReduction, 0);
@@ -200,18 +200,18 @@ void main() {
     game = makeGameWithPlayerCount(1);
     board = game.board;
     player = game.players.first;
-    turn.adjustClank(board, 30);
+    turn.adjustClank(30);
     board.moveDragonAreaToBag();
     expect(stashClankCount(board, player), 0);
     expect(areaClankCount(board, player), 0);
     expect(turn.leftoverClankReduction, 0);
-    turn.adjustClank(board, -2);
+    turn.adjustClank(-2);
     expect(stashClankCount(board, player), 0);
     expect(areaClankCount(board, player), 0);
     expect(turn.leftoverClankReduction, -2);
     // Adding clank here could be blocked for two reasons, either due to
     // no cubes in stash or negative leftover.
-    turn.adjustClank(board, 2);
+    turn.adjustClank(2);
     expect(stashClankCount(board, player), 0);
     expect(areaClankCount(board, player), 0);
     expect(turn.leftoverClankReduction, 0); // -2 would also be reasonable.
@@ -220,7 +220,7 @@ void main() {
   test('drawCards effect', () {
     var game = makeGameWithPlayerCount(1);
     var player = game.players.first;
-    Turn turn = Turn(player: player);
+    var turn = game.turn;
     expect(turn.hand.length, 5);
     addAndPlayCard(game, turn, 'Diamond'); // adds Diamond, plays = draw 1
     expect(player.deck.playArea.length, 1);
@@ -239,7 +239,7 @@ void main() {
   test('gainGold effect', () {
     var game = makeGameWithPlayerCount(1);
     var player = game.players.first;
-    Turn turn = Turn(player: player);
+    var turn = game.turn;
     expect(player.gold, 0);
     expect(turn.hand.length, 5);
     addAndPlayCard(game, turn, 'Pickaxe'); // gain 2 gold
@@ -293,7 +293,7 @@ void main() {
     var board = game.board;
     board.dungeonRow.addAll(library.make('Emerald', 1));
     var emerald = board.dungeonRow.last.type;
-    Turn turn = Turn(player: game.players.first);
+    var turn = game.turn;
     turn.skill = emerald.skillCost;
     expect(board.clankArea.totalPlayerCubes, 0);
     game.executeAction(turn, AcquireCard(cardType: emerald));
@@ -305,7 +305,7 @@ void main() {
     var board = game.board;
     board.dungeonRow.addAll(library.make('Silver Spear', 1));
     var silverSpear = board.dungeonRow.last.type;
-    Turn turn = Turn(player: game.players.first);
+    var turn = game.turn;
     turn.skill = silverSpear.skillCost;
     expect(turn.swords, 0);
     game.executeAction(turn, AcquireCard(cardType: silverSpear));
@@ -317,7 +317,7 @@ void main() {
     var board = game.board;
     board.dungeonRow.addAll(library.make('Boots of Swiftness', 1));
     var bootsOfSwiftness = board.dungeonRow.last.type;
-    Turn turn = Turn(player: game.players.first);
+    var turn = game.turn;
     turn.skill = bootsOfSwiftness.skillCost;
     expect(turn.boots, 0);
     game.executeAction(turn, AcquireCard(cardType: bootsOfSwiftness));
@@ -330,7 +330,7 @@ void main() {
     var board = game.board;
     board.dungeonRow.addAll(library.make('Amulet of Vigor', 2));
     var amuletOfVigor = board.dungeonRow.last.type;
-    Turn turn = Turn(player: game.players.first);
+    var turn = game.turn;
 
     // Does nothing if you haven't taken damage.
     expect(board.damageTakenByPlayer(player.color), 0);
@@ -348,7 +348,7 @@ void main() {
 
   test('negative clank', () {
     var game = makeGameWithPlayerCount(1);
-    Turn turn = Turn(player: game.players.first);
+    var turn = game.turn;
     expect(game.board.clankArea.totalPlayerCubes, 0);
     addAndPlayCard(game, turn, 'Stumble');
     expect(turn.leftoverClankReduction, 0);
@@ -408,19 +408,18 @@ void main() {
   test('arrival effects happen before dragon attack', () {
     var game = makeGameWithPlayerCount(2);
     var board = game.board;
-    Turn turn = Turn(player: game.activePlayer);
     board.dungeonRow = [];
     board.dungeonDeck = library.make('Overlord', 1); // arrival clank, no dragon
     expect(board.clankArea.totalPlayerCubes, 0);
     game.activePlayer.deck.hand = []; // avoid assert in executeEndOfTurn.
-    game.executeEndOfTurn(turn);
+    game.executeEndOfTurn();
     expect(board.clankArea.totalPlayerCubes, 2);
     expect(board.dungeonRow.length, 1);
 
     board.dungeonDeck = library.make('Overlord', 1); // arrival clank, no dragon
     board.dungeonDeck.addAll(library.make('Animated Door', 1)); // dragon!
     game.activePlayer.deck.hand = []; // avoid assert in executeEndOfTurn.
-    game.executeEndOfTurn(turn);
+    game.executeEndOfTurn();
     expect(board.clankArea.totalPlayerCubes, 0);
     // 24 dragon cubes + 2 from each overlord, per player = 28
     // Dragon attack: 3 cubes for 2 players, 28 - 3 = 25.
@@ -442,10 +441,9 @@ void main() {
 
   test('fight monsters', () {
     var game = makeGameWithPlayerCount(1);
-    var player = game.activePlayer;
     var board = game.board;
     board.dungeonRow = library.make('Kobold', 1);
-    Turn turn = Turn(player: player);
+    var turn = game.turn;
     turn.swords = 1;
     game.executeAction(turn, Fight(cardType: board.dungeonRow.first.type));
     expect(board.dungeonDiscard.length, 1);
@@ -456,10 +454,9 @@ void main() {
 
   test('use device', () {
     var game = makeGameWithPlayerCount(1);
-    var player = game.activePlayer;
     var board = game.board;
     board.dungeonRow = library.make('Ladder', 1);
-    Turn turn = Turn(player: player);
+    var turn = game.turn;
     turn.skill = 3;
     game.executeAction(turn, UseDevice(cardType: board.dungeonRow.first.type));
     expect(board.dungeonDiscard.length, 1);
@@ -483,7 +480,7 @@ void main() {
   test('picking up an artifact increases dragon rage', () {
     var game = makeGameWithPlayerCount(2);
     var player = game.activePlayer;
-    Turn turn = Turn(player: player);
+    var turn = game.turn;
     turn.boots = 5; // plenty.
     var artifactRoom = game.board.graph.allSpaces
         .firstWhere((space) => space.expectedArtifactValue > 0);
@@ -501,7 +498,7 @@ void main() {
     var board = game.board;
     var player = game.activePlayer;
 
-    Turn turn = Turn(player: player);
+    var turn = game.turn;
     addAndPlayCard(game, turn, 'Stumble');
     expect(board.playerCubeStashes.countFor(player.color), 29);
     expect(board.clankArea.countFor(player.color), 1);
@@ -509,7 +506,7 @@ void main() {
     board.dungeonDeck = library.make('Orc Grunt', 1);
     board.dragonBag.dragonCubesLeft = 0;
     player.deck.hand = [];
-    game.executeEndOfTurn(turn);
+    game.executeEndOfTurn();
     expect(board.healthForPlayer(player.color), 9);
     expect(board.clankArea.countFor(player.color), 0);
     expect(board.dragonBag.countFor(player.color), 0);
@@ -522,7 +519,7 @@ void main() {
     var player = game.activePlayer;
 
     var goblin = library.cardTypeByName('Goblin');
-    Turn turn = Turn(player: player);
+    var turn = game.turn;
     turn.swords = 4;
     expect(player.gold, 0);
     expect(board.availableCardTypes.contains(goblin), isTrue);
@@ -543,7 +540,7 @@ void main() {
     var game = makeGameWithPlayerCount(1);
     var player = game.activePlayer;
     var allItems = game.box.makeAllLootTokens();
-    Turn turn = Turn(player: player);
+    var turn = game.turn;
     void addItemAndUse(String name) {
       var item = allItems.firstWhere((item) => item.loot.name == name);
       player.loot.add(item);
@@ -624,7 +621,7 @@ void main() {
     player.loot.add(allLoot.firstWhere((token) => token.points == 30));
     expect(player.hasArtifact, isTrue);
     var edge = nextToGoal.edges.firstWhere((edge) => edge.end == goal);
-    Turn turn = Turn(player: player);
+    var turn = game.turn;
     turn.boots = 1;
     // Regardless of takeItem, a Mastery Token is awarded.
     game.executeTraverse(turn, Traverse(edge: edge, takeItem: false));
@@ -641,7 +638,7 @@ void main() {
     var player = game.activePlayer;
     var board = game.board;
     board.dungeonRow = library.make('Teleporter', 1);
-    Turn turn = Turn(player: player);
+    var turn = game.turn;
     turn.skill = 4;
     turn.boots = 3;
     expect(turn.teleports, 0);
@@ -679,7 +676,6 @@ void main() {
   test('arriveReturnDragonCubes effect', () {
     var game = makeGameWithPlayerCount(1);
     var board = game.board;
-    var turn = Turn(player: game.activePlayer);
 
     board.dungeonRow = [];
 
@@ -687,7 +683,7 @@ void main() {
     board.dungeonDeck = library.make('Shrine', 1);
     ArrivalTriggers triggers = board.refillDungeonRow();
     expect(board.dungeonRow.length, 1);
-    game.executeArrivalTriggers(turn, triggers);
+    game.executeArrivalTriggers(triggers);
     expect(triggers.refillDragonCubes, 3);
     expect(board.dragonBag.dragonCubesLeft, 24);
 
@@ -695,7 +691,7 @@ void main() {
     board.dungeonDeck = library.make('Shrine', 1);
     triggers = board.refillDungeonRow();
     expect(board.dungeonRow.length, 2);
-    game.executeArrivalTriggers(turn, triggers);
+    game.executeArrivalTriggers(triggers);
     expect(triggers.refillDragonCubes, 3);
     expect(board.dragonBag.dragonCubesLeft, 13);
 
@@ -703,7 +699,7 @@ void main() {
     board.dungeonDeck = library.make('Shrine', 2);
     triggers = board.refillDungeonRow();
     expect(board.dungeonRow.length, 4);
-    game.executeArrivalTriggers(turn, triggers);
+    game.executeArrivalTriggers(triggers);
     expect(triggers.refillDragonCubes, 6);
     expect(board.dragonBag.dragonCubesLeft, 16);
   });

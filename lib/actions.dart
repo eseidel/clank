@@ -118,7 +118,7 @@ class ActionGenerator {
   }
 
   Iterable<Traverse> possibleMoves() sync* {
-    int hpAvailableForTraversal = turn.hpAvailableForMonsterTraversals(board);
+    int hpAvailableForTraversal = turn.hpAvailableForMonsterTraversals();
     bool haveResourcesFor(Edge edge, {required bool useTeleport}) {
       if (edge.requiresArtifact && !turn.player.hasArtifact) return false;
       if (useTeleport) return true;

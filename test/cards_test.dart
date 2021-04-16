@@ -65,7 +65,7 @@ void main() {
     var crown =
         game.box.makeAllLootTokens().firstWhere((loot) => loot.loot.isCrown);
     var player = game.activePlayer;
-    Turn turn = Turn(player: player);
+    Turn turn = game.turn;
     addAndPlayCard(game, turn, 'The Mountain King');
     expect(turn.skill, 2);
     expect(turn.boots, 1);
@@ -81,7 +81,7 @@ void main() {
     var crown =
         game.box.makeAllLootTokens().firstWhere((loot) => loot.loot.isCrown);
     var player = game.activePlayer;
-    Turn turn = Turn(player: player);
+    var turn = game.turn;
     game.board.takeDamage(player.color, 2);
     addAndPlayCard(game, turn, 'The Queen of Hearts');
     expect(game.board.damageTakenByPlayer(player.color), 2);
@@ -97,7 +97,7 @@ void main() {
     var artifact =
         game.box.makeAllLootTokens().firstWhere((loot) => loot.isArtifact);
     var player = game.activePlayer;
-    Turn turn = Turn(player: player);
+    var turn = game.turn;
     addAndPlayCard(game, turn, 'Kobold Merchant');
     expect(turn.skill, 0);
     expect(player.gold, 2);
@@ -109,7 +109,7 @@ void main() {
   test('rebel triggered effects', () {
     var game = makeGameWithPlayerCount(1);
     var player = game.activePlayer;
-    Turn turn = Turn(player: player);
+    var turn = game.turn;
     addAndPlayCard(game, turn, 'Rebel Miner');
     expect(player.deck.hand.length, 5);
     expect(player.gold, 2);
@@ -141,7 +141,7 @@ void main() {
     var artifact =
         game.box.makeAllLootTokens().firstWhere((loot) => loot.isArtifact);
     var player = game.activePlayer;
-    Turn turn = Turn(player: player);
+    var turn = game.turn;
     addAndPlayCard(game, turn, 'Wand of Recall');
     expect(turn.skill, 2);
     game.executeTriggeredEffects(turn);
@@ -156,7 +156,7 @@ void main() {
     var monkeyIdol =
         game.box.makeAllLootTokens().firstWhere((loot) => loot.isMonkeyIdol);
     var player = game.activePlayer;
-    Turn turn = Turn(player: player);
+    var turn = game.turn;
     expect(player.deck.hand.length, 5);
     addAndPlayCard(game, turn, 'Archaeologist');
     expect(player.deck.hand.length, 6);
@@ -180,7 +180,7 @@ void main() {
     board.graph = Graph(start: Space.start(), allSpaces: [from, to]);
     player.token.moveTo(from);
 
-    var turn = Turn(player: player);
+    var turn = game.turn;
     turn.boots = 5; // plenty
     var generator = ActionGenerator(turn, board);
     var moves = generator.possibleMoves();
@@ -208,8 +208,7 @@ void main() {
   test('treasure hunter', () {
     var game = makeGameWithPlayerCount(1);
     var board = game.board;
-    var player = game.activePlayer;
-    var turn = Turn(player: player);
+    var turn = game.turn;
 
     addAndPlayCard(game, turn, 'Treasure Hunter');
     expect(turn.skill, 2);
@@ -227,8 +226,7 @@ void main() {
   test('treasure hunter triggers arrival effects', () {
     var game = makeGameWithPlayerCount(1);
     var board = game.board;
-    var player = game.activePlayer;
-    var turn = Turn(player: player);
+    var turn = game.turn;
     board.dungeonDeck = game.library.make('Watcher', 1);
     addAndPlayCard(game, turn, 'Treasure Hunter');
     var possibleActions = ActionGenerator(turn, board).possibleQueuedEffects();
@@ -238,7 +236,7 @@ void main() {
   test('Master Burglar', () {
     var game = makeGameWithPlayerCount(1);
     var player = game.activePlayer;
-    var turn = Turn(player: player);
+    var turn = game.turn;
 
     addAndPlayCard(game, turn, 'Master Burglar');
     expect(turn.skill, 2);
@@ -246,7 +244,7 @@ void main() {
     // Starting with 6 burgles, one will always be in the first hand.
     player.deck.discardPile.addAll(player.deck.hand);
     player.deck.hand = [];
-    game.executeEndOfTurn(turn);
+    game.executeEndOfTurn();
     expect(player.deck.cardCount, 10); // One burgle gone.
     expect(player.countOfCards(game.library.cardTypeByName('Burgle')), 5);
   });
@@ -254,7 +252,7 @@ void main() {
     var game = makeGameWithPlayerCount(1);
     var board = game.board;
     var player = game.activePlayer;
-    var turn = Turn(player: player);
+    var turn = game.turn;
 
     board.dungeonRow = library.make('Emerald', 2);
     var emerald = board.dungeonRow.last.type;
@@ -277,7 +275,7 @@ void main() {
   test('Underworld Dealing', () {
     var game = makeGameWithPlayerCount(1);
     var player = game.activePlayer;
-    var turn = Turn(player: player);
+    var turn = game.turn;
 
     var underWorldDealing = cardType('Underworld Dealing');
     addAndPlayCard(game, turn, underWorldDealing.name, orEffectIndex: 0);
@@ -299,7 +297,7 @@ void main() {
     var game = makeGameWithPlayerCount(1);
     var board = game.board;
     var player = game.activePlayer;
-    var turn = Turn(player: player);
+    var turn = game.turn;
 
     var wandOfWind = cardType('Wand of Wind');
     addAndPlayCard(game, turn, wandOfWind.name, orEffectIndex: 0);
@@ -336,7 +334,7 @@ void main() {
     var game = makeGameWithPlayerCount(1);
     var board = game.board;
     var player = game.activePlayer;
-    var turn = Turn(player: player);
+    var turn = game.turn;
 
     var shrine = cardType('Shrine');
     board.dungeonRow = library.make('Shrine', 2);
@@ -353,11 +351,10 @@ void main() {
   test('Mister Whiskers', () {
     var game = makeGameWithPlayerCount(1);
     var board = game.board;
-    var player = game.activePlayer;
-    var turn = Turn(player: player);
+    var turn = game.turn;
 
     var mrWhiskers = cardType('Mister Whiskers');
-    turn.adjustClank(board, 2);
+    turn.adjustClank(2);
     expect(board.clankArea.totalPlayerCubes, 2);
     expect(board.dragonBag.totalCubes, 24);
     expect(board.cubeCountForNormalDragonAttack(), 3);
@@ -375,7 +372,7 @@ void main() {
     var game = makeGameWithPlayerCount(2);
     var board = game.board;
     var player = game.activePlayer;
-    var turn = Turn(player: player);
+    var turn = game.turn;
 
     var dragonShrine = cardType('Dragon Shrine');
     expect(board.cubeCountForNormalDragonAttack(), 3);
@@ -394,7 +391,7 @@ void main() {
     expect(player.deck.cardCount, 10); // 10 starter cards.
     player.deck.discardPile.addAll(player.deck.hand);
     player.deck.hand = [];
-    game.executeEndOfTurn(turn);
+    game.executeEndOfTurn();
     expect(player.deck.cardCount, 9); // One card gone
   }, skip: 'Dragon Shrine unimplemented');
 
@@ -402,7 +399,7 @@ void main() {
     var game = makeGameWithPlayerCount(2);
     var board = game.board;
     var player = game.activePlayer;
-    var turn = Turn(player: player);
+    var turn = game.turn;
 
     var apothecary = cardType('Apothecary');
     // 1 discard -> 3 swords

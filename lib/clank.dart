@@ -137,9 +137,12 @@ class Player {
   String toString() => '${colorToString(color)}';
 }
 
-// Planner can't modify turn directly?
+// Responsible for storing per-turn data as well as helpers for
+// executing a turn.  This is the only place where both Player and Board
+// are accessible at the same time.
 class Turn {
   final Player player;
+  final Board board;
   int skill = 0;
   int boots = 0;
   int swords = 0;
@@ -162,7 +165,7 @@ class Turn {
   // Actions which happen as result of end of turn (e.g. trashing)
   List<EndOfTurnEffect> endOfTurnEffects = [];
 
-  Turn({required this.player});
+  Turn({required this.player, required this.board});
 
   List<Card> get hand => player.deck.hand;
 
@@ -184,7 +187,7 @@ class Turn {
   }
 
   // Does this belong on board instead?
-  int adjustClank(Board board, int desired) {
+  int adjustClank(int desired) {
     // You can't ever have both negative accumulated and a positive clank area.
     assert(leftoverClankReduction == 0 ||
         board.clankArea.countFor(player.color) == 0);
@@ -209,7 +212,7 @@ class Turn {
     return actual;
   }
 
-  int hpAvailableForMonsterTraversals(Board board) {
+  int hpAvailableForMonsterTraversals() {
     // We can't spend more cubes than we have or available health points.
     return min(board.playerCubeStashes.countFor(player.color),
         board.healthForPlayer(player.color) - 1);
@@ -248,7 +251,7 @@ class TrashCard extends EndOfTurnEffect {
 
 class ClankGame {
   late List<Player> players;
-  late Player activePlayer;
+  late Turn turn;
   late Board board;
   late Box box = Box();
   final Library library = Library();
@@ -264,15 +267,17 @@ class ClankGame {
         .map((planner) =>
             Player(planner: planner, deck: createStarterDeck(library)))
         .toList();
-    activePlayer = players.first;
     setup();
+    turn = Turn(player: players.first, board: board);
   }
 
   Player nextPlayer() {
-    int index = players.indexOf(activePlayer);
+    int index = players.indexOf(turn.player);
     if (index == players.length - 1) return players.first;
     return players[index + 1];
   }
+
+  Player get activePlayer => turn.player;
 
   void executeAcquireLoot(Turn turn, LootToken token) {
     Player player = turn.player;
@@ -334,7 +339,7 @@ class ClankGame {
 
   void executeAcquireCardEffects(Turn turn, Card card) {
     if (card.type.acquireClank != 0) {
-      turn.adjustClank(board, card.type.acquireClank);
+      turn.adjustClank(card.type.acquireClank);
     }
     turn.swords += card.type.acquireSwords;
     turn.boots += card.type.acquireBoots;
@@ -429,7 +434,7 @@ class ClankGame {
     }
     turn.swords += orEffect.swords;
     if (orEffect.clank != 0) {
-      turn.adjustClank(board, orEffect.clank);
+      turn.adjustClank(orEffect.clank);
     }
     OrSpecial? special = orEffect.special;
     if (special != null) {
@@ -443,7 +448,7 @@ class ClankGame {
     assert(cardUsableAtLocation(cardType, turn.player.location));
     turn.addTurnResourcesFromCard(cardType);
     if (cardType.clank != 0) {
-      turn.adjustClank(board, cardType.clank);
+      turn.adjustClank(cardType.clank);
     }
     if (cardType.drawCards != 0) {
       turn.player.deck.drawCards(_random, cardType.drawCards);
@@ -551,49 +556,49 @@ class ClankGame {
     if (action is ReplaceCardInDungeonRow) {
       var triggers =
           board.replaceCardInDungeonRowIgnoringDragon(action.cardType);
-      executeArrivalTriggers(turn, triggers);
+      executeArrivalTriggers(triggers);
       return;
     }
     assert(false);
   }
 
-  void addClankForAll(Turn turn, int clank) {
+  void addClankForAll(int clank) {
     for (var player in players) {
       if (player == activePlayer) {
-        turn.adjustClank(board, clank);
+        turn.adjustClank(clank);
       } else {
         board.adjustClank(player.color, clank);
       }
     }
   }
 
-  void executeEndOfTurnEffects(Turn turn) {
+  void executeEndOfTurnEffects() {
     for (var effect in turn.endOfTurnEffects) {
       effect.execute(turn);
     }
   }
 
-  void executeArrivalTriggers(Turn turn, ArrivalTriggers triggers) {
+  void executeArrivalTriggers(ArrivalTriggers triggers) {
     if (triggers.clankForAll != 0) {
-      addClankForAll(turn, triggers.clankForAll);
+      addClankForAll(triggers.clankForAll);
     }
     if (triggers.refillDragonCubes != 0) {
       board.refillDragonCubes(triggers.refillDragonCubes);
     }
   }
 
-  void executeEndOfTurn(Turn turn) {
+  void executeEndOfTurn() {
     // You must play all cards
     assert(turn.hand.isEmpty);
     activePlayer.deck.discardPlayAreaAndDrawNewHand(_random);
 
     assert(turn.teleports == 0, 'Must use all teleports.');
     assert(turn.queuedEffects.isEmpty, 'Must use all queued effects.');
-    executeEndOfTurnEffects(turn);
+    executeEndOfTurnEffects();
 
     // Refill the dungeon row
     ArrivalTriggers triggers = board.refillDungeonRow();
-    executeArrivalTriggers(turn, triggers);
+    executeArrivalTriggers(triggers);
 
     // Triggers happen before dragon attacks.
     // https://boardgamegeek.com/thread/2380191/article/34177411#34177411
@@ -664,7 +669,6 @@ class ClankGame {
 
   // This probably belongs outside of the game class.
   Future<void> takeTurn() async {
-    final turn = Turn(player: activePlayer);
     // If the player is the first-out, perform countdown turn instead.
     if (activePlayer == playerFirstOut) {
       moveCountdownTrack();
@@ -682,7 +686,7 @@ class ClankGame {
       executeTriggeredEffects(turn);
       //print(turn);
     } while (!(action is EndTurn));
-    executeEndOfTurn(turn);
+    executeEndOfTurn();
     bool statusChanged = updatePlayerStatuses();
     // If players changed status, start countdown track!
     if (playerFirstOut == null && statusChanged) {
@@ -690,7 +694,7 @@ class ClankGame {
           players.firstWhere((player) => player.status != PlayerStatus.inGame);
     }
     isComplete = checkForEndOfGame();
-    activePlayer = nextPlayer();
+    turn = Turn(player: nextPlayer(), board: board);
   }
 
   bool checkForEndOfGame() {
@@ -768,8 +772,7 @@ class ClankGame {
     board.setRageLevelForNumberOfPlayers(players.length);
 
     var triggers = board.fillDungeonRowFirstTimeReplacingDragons(_random);
-    Turn turn = Turn(player: activePlayer);
-    executeArrivalTriggers(turn, triggers); // Can add clank.
+    executeArrivalTriggers(triggers); // Can add clank.
   }
 }
 

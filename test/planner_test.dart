@@ -32,7 +32,7 @@ void main() {
     board.graph = Graph(start: from, allSpaces: [from, to]);
     player.token.moveTo(from);
 
-    var turn = Turn(player: player);
+    var turn = game.turn;
     turn.boots = 5; // plenty
     turn.swords = 1; // Not enough.
     var generator = ActionGenerator(turn, board);
@@ -56,7 +56,7 @@ void main() {
     board.graph = Graph(start: Space.start(), allSpaces: [from, to]);
     player.token.moveTo(from);
 
-    var turn = Turn(player: player);
+    var turn = game.turn;
     turn.boots = 5; // plenty
     var generator = ActionGenerator(turn, board);
     var moves = generator.possibleMoves();
@@ -102,7 +102,7 @@ void main() {
     board.graph = Graph(start: Space.start(), allSpaces: [from, to]);
     player.token.moveTo(from);
 
-    var turn = Turn(player: player);
+    var turn = game.turn;
     turn.boots = 5; // plenty
     var generator = ActionGenerator(turn, board);
     var moves = generator.possibleMoves();
@@ -124,7 +124,7 @@ void main() {
     var board = game.board;
     var player = game.activePlayer;
 
-    var turn = Turn(player: player);
+    var turn = game.turn;
     var generator = ActionGenerator(turn, board);
 
     player.deck.hand = [];
