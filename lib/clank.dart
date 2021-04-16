@@ -187,7 +187,7 @@ class Turn {
   }
 
   // Does this belong on board instead?
-  int adjustClank(int desired) {
+  int adjustActivePlayerClank(int desired) {
     // You can't ever have both negative accumulated and a positive clank area.
     assert(leftoverClankReduction == 0 ||
         board.clankArea.countFor(player.color) == 0);
@@ -339,7 +339,7 @@ class ClankGame {
 
   void executeAcquireCardEffects(Turn turn, Card card) {
     if (card.type.acquireClank != 0) {
-      turn.adjustClank(card.type.acquireClank);
+      turn.adjustActivePlayerClank(card.type.acquireClank);
     }
     turn.swords += card.type.acquireSwords;
     turn.boots += card.type.acquireBoots;
@@ -434,7 +434,7 @@ class ClankGame {
     }
     turn.swords += orEffect.swords;
     if (orEffect.clank != 0) {
-      turn.adjustClank(orEffect.clank);
+      turn.adjustActivePlayerClank(orEffect.clank);
     }
     OrSpecial? special = orEffect.special;
     if (special != null) {
@@ -448,7 +448,7 @@ class ClankGame {
     assert(cardUsableAtLocation(cardType, turn.player.location));
     turn.addTurnResourcesFromCard(cardType);
     if (cardType.clank != 0) {
-      turn.adjustClank(cardType.clank);
+      turn.adjustActivePlayerClank(cardType.clank);
     }
     if (cardType.drawCards != 0) {
       turn.player.deck.drawCards(_random, cardType.drawCards);
@@ -565,7 +565,7 @@ class ClankGame {
   void addClankForAll(int clank) {
     for (var player in players) {
       if (player == activePlayer) {
-        turn.adjustClank(clank);
+        turn.adjustActivePlayerClank(clank);
       } else {
         board.adjustClank(player.color, clank);
       }
@@ -680,7 +680,7 @@ class ClankGame {
     }
     Action action;
     do {
-      action = await activePlayer.planner.nextAction(turn, board);
+      action = await activePlayer.planner.nextAction(turn);
       // Never trust what comes back from a plan?
       executeAction(turn, action);
       executeTriggeredEffects(turn);

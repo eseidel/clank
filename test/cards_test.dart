@@ -182,7 +182,7 @@ void main() {
 
     var turn = game.turn;
     turn.boots = 5; // plenty
-    var generator = ActionGenerator(turn, board);
+    var generator = ActionGenerator(turn);
     var moves = generator.possibleMoves();
     expect(moves.length, 1); // Move to 'to'
     game.executeAction(turn, moves.first);
@@ -215,7 +215,7 @@ void main() {
     expect(turn.swords, 2);
     expect(turn.queuedEffects.length, 1);
     // Cards with complex actions are split into two.
-    var possibleActions = ActionGenerator(turn, board).possibleQueuedEffects();
+    var possibleActions = ActionGenerator(turn).possibleQueuedEffects();
     expect(possibleActions.length, 6); // One per card (no duplicates);
     game.executeAction(turn, possibleActions.first);
     expect(board.dungeonDiscard.length, 1);
@@ -229,7 +229,7 @@ void main() {
     var turn = game.turn;
     board.dungeonDeck = game.library.make('Watcher', 1);
     addAndPlayCard(game, turn, 'Treasure Hunter');
-    var possibleActions = ActionGenerator(turn, board).possibleQueuedEffects();
+    var possibleActions = ActionGenerator(turn).possibleQueuedEffects();
     game.executeAction(turn, possibleActions.first);
     expect(board.clankArea.totalPlayerCubes, 1); // Arrival clank triggers.
   });
@@ -354,7 +354,7 @@ void main() {
     var turn = game.turn;
 
     var mrWhiskers = cardType('Mister Whiskers');
-    turn.adjustClank(2);
+    turn.adjustActivePlayerClank(2);
     expect(board.clankArea.totalPlayerCubes, 2);
     expect(board.dragonBag.totalCubes, 24);
     expect(board.cubeCountForNormalDragonAttack(), 3);

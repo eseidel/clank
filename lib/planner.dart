@@ -8,7 +8,7 @@ import 'actions.dart';
 
 // Responsible for making decisions, asynchronous, not trust-worthy.
 abstract class Planner {
-  Future<Action> nextAction(Turn turn, Board board);
+  Future<Action> nextAction(Turn turn);
 }
 
 // Distance between two points is a multi-variable result
@@ -23,7 +23,7 @@ class MockPlanner implements Planner {
       : _actions = Queue.from(actions);
 
   @override
-  Future<Action> nextAction(Turn turn, Board board) async {
+  Future<Action> nextAction(Turn turn) async {
     if (_actions.isEmpty) {
       return EndTurn();
     }
@@ -47,8 +47,8 @@ class RandomPlanner implements Planner {
   // Expected Score ==
 
   @override
-  Future<Action> nextAction(Turn turn, Board board) async {
-    ActionGenerator generator = ActionGenerator(turn, board);
+  Future<Action> nextAction(Turn turn) async {
+    ActionGenerator generator = ActionGenerator(turn);
     List<Action> possible = [];
     possible.addAll(generator.possibleCardPlays());
     // If cards in hand, play all those first?

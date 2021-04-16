@@ -15,13 +15,6 @@ void main() {
         planners: List.generate(count, (index) => MockPlanner()), seed: 10);
   }
 
-  // Does this belong on Turn?
-  int stashClankCount(Board board, Player player) =>
-      board.playerCubeStashes.countFor(player.color);
-
-  int areaClankCount(Board board, Player player) =>
-      board.clankArea.countFor(player.color);
-
   void addAndPlayCard(ClankGame game, Turn turn, String name,
       {int? orEffectIndex}) {
     var card = library.make(name, 1).first;
@@ -122,6 +115,12 @@ void main() {
   test('leftover negative clank', () {
     // Sources: personal stash, clank area, leftover negative, adjustmnet
 
+    int stashClankCount(Board board, Player player) =>
+        board.playerCubeStashes.countFor(player.color);
+
+    int areaClankCount(Board board, Player player) =>
+        board.clankArea.countFor(player.color);
+
     // Common-case, clank addition:
     // stash: 30, area: 0, leftover: 0, new: +2 -> stash: 28, area: 2, leftover: 0
     var game = makeGameWithPlayerCount(1);
@@ -132,7 +131,7 @@ void main() {
     expect(stashClankCount(board, player), 30);
     expect(areaClankCount(board, player), 0);
     expect(turn.leftoverClankReduction, 0);
-    turn.adjustClank(2);
+    turn.adjustActivePlayerClank(2);
     expect(stashClankCount(board, player), 28);
     expect(areaClankCount(board, player), 2);
     expect(turn.leftoverClankReduction, 0);
@@ -142,20 +141,20 @@ void main() {
     game = makeGameWithPlayerCount(1);
     board = game.board;
     player = game.players.first;
-    turn.adjustClank(30);
+    turn.adjustActivePlayerClank(30);
     expect(stashClankCount(board, player), 0);
     expect(areaClankCount(board, player), 30);
     expect(turn.leftoverClankReduction, 0);
 
     // Can't add clank once run out:
-    turn.adjustClank(2);
+    turn.adjustActivePlayerClank(2);
     expect(stashClankCount(board, player), 0);
     expect(areaClankCount(board, player), 30);
     expect(turn.leftoverClankReduction, 0);
 
     // Negative clank pulls back from clank area:
     // stash: 0, area: 30, leftover: 0, new: -2 -> stash: 2, area: 28, leftover: 0
-    turn.adjustClank(-2);
+    turn.adjustActivePlayerClank(-2);
     expect(stashClankCount(board, player), 2);
     expect(areaClankCount(board, player), 28);
     expect(turn.leftoverClankReduction, 0);
@@ -165,25 +164,25 @@ void main() {
     game = makeGameWithPlayerCount(1);
     board = game.board;
     player = game.players.first;
-    turn.adjustClank(-2);
+    turn.adjustActivePlayerClank(-2);
     expect(stashClankCount(board, player), 30);
     expect(areaClankCount(board, player), 0);
     expect(turn.leftoverClankReduction, -2);
-    turn.adjustClank(-2);
+    turn.adjustActivePlayerClank(-2);
     expect(stashClankCount(board, player), 30);
     expect(areaClankCount(board, player), 0);
     expect(turn.leftoverClankReduction, -4);
 
     // Adding clank reduces accumlated negative:
     // stash: 30, area: 0, leftover: -4, new: 2 -> stash: 30, area: 0, leftover: -2
-    turn.adjustClank(2);
+    turn.adjustActivePlayerClank(2);
     expect(stashClankCount(board, player), 30);
     expect(areaClankCount(board, player), 0);
     expect(turn.leftoverClankReduction, -2);
 
     // Adding clank can take you back positive:
     // stash: 30, area: 0, leftover: -2, new: 3 -> stash: 29, area: 1, leftover: 0
-    turn.adjustClank(3);
+    turn.adjustActivePlayerClank(3);
     expect(stashClankCount(board, player), 29);
     expect(areaClankCount(board, player), 1);
     expect(turn.leftoverClankReduction, 0);
@@ -200,18 +199,18 @@ void main() {
     game = makeGameWithPlayerCount(1);
     board = game.board;
     player = game.players.first;
-    turn.adjustClank(30);
+    turn.adjustActivePlayerClank(30);
     board.moveDragonAreaToBag();
     expect(stashClankCount(board, player), 0);
     expect(areaClankCount(board, player), 0);
     expect(turn.leftoverClankReduction, 0);
-    turn.adjustClank(-2);
+    turn.adjustActivePlayerClank(-2);
     expect(stashClankCount(board, player), 0);
     expect(areaClankCount(board, player), 0);
     expect(turn.leftoverClankReduction, -2);
     // Adding clank here could be blocked for two reasons, either due to
     // no cubes in stash or negative leftover.
-    turn.adjustClank(2);
+    turn.adjustActivePlayerClank(2);
     expect(stashClankCount(board, player), 0);
     expect(areaClankCount(board, player), 0);
     expect(turn.leftoverClankReduction, 0); // -2 would also be reasonable.

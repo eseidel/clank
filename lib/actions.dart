@@ -95,9 +95,8 @@ class EndTurn extends Action {}
 
 class ActionGenerator {
   final Turn turn;
-  final Board board;
 
-  ActionGenerator(this.turn, this.board);
+  ActionGenerator(this.turn);
 
   Iterable<PlayCard> possibleCardPlays() sync* {
     Set<CardType> seenTypes = {};
@@ -183,7 +182,7 @@ class ActionGenerator {
       return true;
     }
 
-    for (var cardType in board.availableCardTypes) {
+    for (var cardType in turn.board.availableCardTypes) {
       if (!cardUsableAtLocation(cardType, turn.player.location)) {
         continue;
       }
@@ -212,7 +211,7 @@ class ActionGenerator {
       switch (action) {
         case QueuedEffect.replaceCardInDungeonRow:
           for (var cardType
-              in uniqueValues(board.dungeonRow.map((card) => card.type))) {
+              in uniqueValues(turn.board.dungeonRow.map((card) => card.type))) {
             yield ReplaceCardInDungeonRow(cardType);
           }
           break;

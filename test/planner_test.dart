@@ -35,7 +35,7 @@ void main() {
     var turn = game.turn;
     turn.boots = 5; // plenty
     turn.swords = 1; // Not enough.
-    var generator = ActionGenerator(turn, board);
+    var generator = ActionGenerator(turn);
     var moves = generator.possibleMoves();
     expect(moves.length, 2); // spend 1 hp, spend 2 hp.
     expect(moves.any((move) => move.spendHealth > 0), true);
@@ -58,7 +58,7 @@ void main() {
 
     var turn = game.turn;
     turn.boots = 5; // plenty
-    var generator = ActionGenerator(turn, board);
+    var generator = ActionGenerator(turn);
     var moves = generator.possibleMoves();
     expect(moves.length, 1); // Move to 'to'
     game.executeAction(turn, moves.first);
@@ -104,7 +104,7 @@ void main() {
 
     var turn = game.turn;
     turn.boots = 5; // plenty
-    var generator = ActionGenerator(turn, board);
+    var generator = ActionGenerator(turn);
     var moves = generator.possibleMoves();
     expect(moves.length, 0); // Only available edge requires key.
 
@@ -121,11 +121,10 @@ void main() {
 
   test('possibleCardPlays', () {
     var game = makeGameWithPlayerCount(1);
-    var board = game.board;
     var player = game.activePlayer;
 
     var turn = game.turn;
-    var generator = ActionGenerator(turn, board);
+    var generator = ActionGenerator(turn);
 
     player.deck.hand = [];
     var plays = generator.possibleCardPlays();
