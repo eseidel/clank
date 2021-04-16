@@ -276,7 +276,7 @@ class ClankGame {
     if (!card.type.neverDiscards) {
       board.dungeonDiscard.add(card);
     }
-    executeCardUseEffects(turn, action.cardType);
+    executeCardUseEffects(turn, action.cardType, orEffect: null);
     print('${turn.player} fought $card');
   }
 
@@ -296,8 +296,53 @@ class ClankGame {
     }
   }
 
+  void executeOrSpecial(Turn turn, OrSpecial special) {
+    switch (special) {
+      case OrSpecial.dragonAttack:
+        board.dragonAttack(_random);
+        break;
+      case OrSpecial.spendSevenGoldForTwoSecretTomes:
+        if (turn.player.gold < 7) {
+          throw ArgumentError('7 gold required.');
+        }
+        turn.player.gold -= 7;
+        var secretTome = library.cardTypeByName('Secret Tome');
+        var cards = [
+          board.reserve.takeCard(secretTome),
+          board.reserve.takeCard(secretTome)
+        ];
+        turn.player.deck.discardPile.addAll(cards);
+        break;
+      case OrSpecial.takeSecretFromAdjacentRoom:
+        // TODO: Implement.
+        break;
+      case OrSpecial.teleport:
+        turn.teleports += 1;
+        break;
+      case OrSpecial.trashACard:
+        // TODO: Implement.
+        break;
+    }
+  }
+
+  void executeOrEffect(Turn turn, OrEffect orEffect) {
+    turn.player.gold += orEffect.gainGold;
+    if (orEffect.hearts != 0) {
+      board.healDamage(turn.player.color, orEffect.hearts);
+    }
+    turn.swords += orEffect.swords;
+    if (orEffect.clank != 0) {
+      turn.adjustClank(board, orEffect.clank);
+    }
+    OrSpecial? special = orEffect.special;
+    if (special != null) {
+      executeOrSpecial(turn, special);
+    }
+  }
+
   // Used by both PlayCard and Fight.
-  void executeCardUseEffects(Turn turn, CardType cardType) {
+  void executeCardUseEffects(Turn turn, CardType cardType,
+      {required OrEffect? orEffect}) {
     assert(cardUsableAtLocation(cardType, turn.player.location));
     turn.addTurnResourcesFromCard(cardType);
     if (cardType.clank != 0) {
@@ -332,6 +377,10 @@ class ClankGame {
     if (cardType.specialEffect == SpecialEffect.gemTwoSkillDiscount) {
       turn.gemTwoSkillDiscount = true;
     }
+
+    if (orEffect != null) {
+      executeOrEffect(turn, orEffect);
+    }
   }
 
   void executeUseDevice(Turn turn, UseDevice action) {
@@ -343,7 +392,7 @@ class ClankGame {
 
     Card card = board.takeCard(cardType);
     board.dungeonDiscard.add(card);
-    executeCardUseEffects(turn, cardType);
+    executeCardUseEffects(turn, cardType, orEffect: action.orEffect);
     print('${turn.player} uses device $card');
   }
 
@@ -375,7 +424,7 @@ class ClankGame {
   void executeAction(Turn turn, Action action) {
     if (action is PlayCard) {
       turn.player.deck.playCard(action.cardType);
-      executeCardUseEffects(turn, action.cardType);
+      executeCardUseEffects(turn, action.cardType, orEffect: action.orEffect);
       return;
     }
     if (action is EndTurn) {
@@ -403,7 +452,9 @@ class ClankGame {
     }
     // Should this really be its own action subclass?
     if (action is ReplaceCardInDungeonRow) {
-      board.replaceCardInDungeonRowIgnoringDragon(action.cardType);
+      var triggers =
+          board.replaceCardInDungeonRowIgnoringDragon(action.cardType);
+      executeArrivalTriggers(turn, triggers);
       return;
     }
     assert(false);
@@ -425,6 +476,15 @@ class ClankGame {
     }
   }
 
+  void executeArrivalTriggers(Turn turn, ArrivalTriggers triggers) {
+    if (triggers.clankForAll != 0) {
+      addClankForAll(turn, triggers.clankForAll);
+    }
+    if (triggers.refillDragonCubes != 0) {
+      board.refillDragonCubes(triggers.refillDragonCubes);
+    }
+  }
+
   void executeEndOfTurn(Turn turn) {
     // You must play all cards
     assert(turn.hand.isEmpty);
@@ -436,9 +496,8 @@ class ClankGame {
 
     // Refill the dungeon row
     ArrivalTriggers triggers = board.refillDungeonRow();
-    if (triggers.clankForAll != 0) {
-      addClankForAll(turn, triggers.clankForAll);
-    }
+    executeArrivalTriggers(turn, triggers);
+
     // Triggers happen before dragon attacks.
     // https://boardgamegeek.com/thread/2380191/article/34177411#34177411
     if (triggers.dragonAttacks) {
@@ -608,9 +667,12 @@ class ClankGame {
     board.reserve = Reserve(library);
 
     board.dungeonDeck = library.makeDungeonDeck().toList();
-    board.fillDungeonRowFirstTimeReplacingDragons(_random);
     // Set Rage level
     board.setRageLevelForNumberOfPlayers(players.length);
+
+    var triggers = board.fillDungeonRowFirstTimeReplacingDragons(_random);
+    Turn turn = Turn(player: activePlayer);
+    executeArrivalTriggers(turn, triggers); // Can add clank.
   }
 }
 
@@ -915,7 +977,12 @@ extension Pile<T> on List<T> {
 class ArrivalTriggers {
   bool dragonAttacks;
   int clankForAll;
-  ArrivalTriggers({required this.dragonAttacks, required this.clankForAll});
+  int refillDragonCubes;
+  ArrivalTriggers({
+    required this.dragonAttacks,
+    required this.clankForAll,
+    required this.refillDragonCubes,
+  });
 }
 
 // O(N^2), use only for short lists.
@@ -951,7 +1018,7 @@ class Board {
 
   Board();
 
-  void fillDungeonRowFirstTimeReplacingDragons(Random random) {
+  ArrivalTriggers fillDungeonRowFirstTimeReplacingDragons(Random random) {
     assert(dungeonRow.isEmpty);
     dungeonDeck.shuffle(random); // Our job to shuffle first time.
     // On first fill, replace any dragon cards.
@@ -964,6 +1031,7 @@ class Board {
     }
     dungeonDeck.shuffle(random);
     dungeonRow.addAll(newCards);
+    return arrivalTriggersForNewCards(newCards);
   }
 
   ArrivalTriggers refillDungeonRow() {
@@ -978,7 +1046,13 @@ class Board {
     bool newDragon = newCards.any((card) => card.type.dragon);
     int arrivalClank =
         newCards.fold(0, (sum, card) => sum + card.type.arriveClank);
-    return ArrivalTriggers(dragonAttacks: newDragon, clankForAll: arrivalClank);
+    int arrivalDragonCubes = newCards.fold(
+        0, (sum, card) => sum + card.type.arriveReturnDragonCubes);
+    return ArrivalTriggers(
+      dragonAttacks: newDragon && !ignoreDragon,
+      clankForAll: arrivalClank,
+      refillDragonCubes: arrivalDragonCubes,
+    );
   }
 
   ArrivalTriggers replaceCardInDungeonRowIgnoringDragon(CardType cardType) {
@@ -1050,6 +1124,12 @@ class Board {
       dragonBag.addTo(color, clankArea.countFor(color));
     }
     clankArea = CubeCounts();
+  }
+
+  void refillDragonCubes(int count) {
+    int maxRefill = Board.dragonMaxCubeCount - dragonBag.dragonCubesLeft;
+    int refill = min(count, maxRefill);
+    dragonBag.dragonCubesLeft += refill;
   }
 
   void dragonAttack(Random random, {int additionalCubes = 0}) {

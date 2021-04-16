@@ -32,6 +32,28 @@ enum SpecialEffect {
   gemTwoSkillDiscount,
 }
 
+enum OrSpecial {
+  trashACard,
+  dragonAttack,
+  spendSevenGoldForTwoSecretTomes,
+  takeSecretFromAdjacentRoom,
+  teleport,
+}
+
+class OrEffect {
+  final int gainGold;
+  final int hearts;
+  final int swords;
+  final int clank;
+  final OrSpecial? special;
+  const OrEffect(
+      {this.gainGold = 0,
+      this.hearts = 0,
+      this.swords = 0,
+      this.clank = 0,
+      this.special});
+}
+
 class CardType {
   final String name;
   final CardSet set;
@@ -55,6 +77,7 @@ class CardType {
   final Location location;
 
   final int arriveClank;
+  final int arriveReturnDragonCubes;
 
   final int acquireClank;
   final int acquireSwords;
@@ -74,6 +97,7 @@ class CardType {
   final ConditionalPoints? pointsCondition;
   final TriggerEffects? triggers;
   final CardSubType subtype;
+  final List<OrEffect> orEffects;
 
   final bool neverDiscards; // Special just for Goblin.
 
@@ -91,6 +115,7 @@ class CardType {
     this.points = 0,
     this.dragon = false,
     this.arriveClank = 0,
+    this.arriveReturnDragonCubes = 0,
     this.acquireClank = 0,
     this.acquireSwords = 0,
     this.acquireHearts = 0,
@@ -108,6 +133,7 @@ class CardType {
     this.endOfTurn,
     this.pointsCondition,
     this.triggers,
+    this.orEffects = const [],
     this.subtype = CardSubType.none,
     this.neverDiscards = false,
   })  : assert(skill >= 0),
@@ -689,6 +715,40 @@ const List<CardType> baseSetAllCardTypes = [
     triggers: EffectTriggers.ifTwoCompanionInPlayAreaDrawCard,
     skillCost: 3,
   ),
+  // CardType(
+  //   name: 'Wand of Wind',
+  //   set: CardSet.dungeon,
+  //   count: 1,
+  //   points: 3,
+  //   orEffects: [
+  //     OrEffect(special: OrSpecial.teleport),
+  //     OrEffect(special: OrSpecial.takeSecretFromAdjacentRoom)
+  //   ],
+  //   skillCost: 6,
+  // ),
+  CardType(
+    name: 'Mister Whiskers',
+    set: CardSet.dungeon,
+    subtype: CardSubType.companion,
+    count: 1,
+    points: 1,
+    dragon: true,
+    orEffects: [
+      OrEffect(special: OrSpecial.dragonAttack),
+      OrEffect(clank: -2),
+    ],
+    skillCost: 1,
+  ),
+  CardType(
+    name: 'Underworld Dealing',
+    set: CardSet.dungeon,
+    count: 1,
+    orEffects: [
+      OrEffect(gainGold: 1),
+      OrEffect(special: OrSpecial.spendSevenGoldForTwoSecretTomes)
+    ],
+    skillCost: 1,
+  ),
 
   // Monsters
   CardType(
@@ -814,5 +874,23 @@ const List<CardType> baseSetAllCardTypes = [
     count: 2,
     teleports: 1,
     skillCost: 4,
+  ),
+  // CardType(
+  //   name: 'Dragon Shrine',
+  //   set: CardSet.dungeon,
+  //   subtype: CardSubType.device,
+  //   count: 2,
+  //   danger: true,
+  //   orEffects: [OrEffect(gainGold: 2), OrEffect(special: OrSpecial.trashACard)],
+  //   skillCost: 4,
+  // ),
+  CardType(
+    name: 'Shrine',
+    set: CardSet.dungeon,
+    subtype: CardSubType.device,
+    count: 3,
+    arriveReturnDragonCubes: 3,
+    orEffects: [OrEffect(gainGold: 1), OrEffect(hearts: 1)],
+    skillCost: 2,
   ),
 ];

@@ -24,6 +24,9 @@ https://boardgamegeek.com/thread/1740275/article/25266676#25266676
 * Secret Skill boost is supposed to be immediate (not held onto)
 * Secret Gold gain should be immediate.
 * Secret draw should be immediate.
+* Turn should replace activePlayer as activeTurn
+* Turn should include a reference to Board.
+* Box and Library should be combined.
 
 ## Missing Features/Cards
 
@@ -59,6 +62,6 @@ https://boardgamegeek.com/thread/1656181/article/23992755#23992755
 
 ## Edge Case Questions
 * Does Treasure Hunter dungeon row replacement cause arrival effects?
-* How does Trashing interact with reshuffling?
+* How does Trashing interact with reshuffling?  When does the "choose card" happen?
 * Does Gem Collector give refunds (for gems purchased that turn)?
 

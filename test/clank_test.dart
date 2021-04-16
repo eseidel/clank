@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:clank/cards.dart';
 import 'package:clank/clank.dart';
 import 'package:clank/graph.dart';
 import 'package:clank/planner.dart';
@@ -19,10 +20,13 @@ void main() {
   // int bagClankCount(Board board, Player player) =>
   //     board.dragonBag.countFor(player.color);
 
-  void addAndPlayCard(ClankGame game, Turn turn, String name) {
+  CardType cardType(String name) => library.cardTypeByName(name);
+
+  void addAndPlayCard(ClankGame game, Turn turn, String name,
+      {int? orEffectIndex}) {
     var card = library.make(name, 1).first;
     turn.player.deck.hand.add(card);
-    game.executeAction(turn, PlayCard(card.type));
+    game.executeAction(turn, PlayCard(card.type, orEffectIndex: orEffectIndex));
   }
 
   test('deck shuffles when empty', () {
@@ -94,7 +98,7 @@ void main() {
   });
 
   test('negative clank', () {
-    var game = ClankGame(planners: [MockPlanner()], seed: 0);
+    var game = ClankGame(planners: [MockPlanner()], seed: 10);
     Turn turn = Turn(player: game.players.first);
     expect(game.board.clankArea.totalPlayerCubes, 0);
     addAndPlayCard(game, turn, 'Stumble');
@@ -120,10 +124,11 @@ void main() {
 
     // Common-case, clank addition:
     // stash: 30, area: 0, leftover: 0, new: +2 -> stash: 28, area: 2, leftover: 0
-    ClankGame game = ClankGame(planners: [MockPlanner()]);
+    ClankGame game = ClankGame(planners: [MockPlanner()], seed: 10);
     Board board = game.board;
     var player = game.players.first;
     Turn turn = Turn(player: player);
+    expect(board.clankArea.totalPlayerCubes, 0);
     expect(stashClankCount(board, player), 30);
     expect(areaClankCount(board, player), 0);
     expect(turn.leftoverClankReduction, 0);
@@ -134,7 +139,7 @@ void main() {
 
     // Running out of clank in stash:
     // stash: 0, area: 30, leftover: 0, new: +2 -> stash: 0, area: 30, leftover: 0
-    game = ClankGame(planners: [MockPlanner()]);
+    game = ClankGame(planners: [MockPlanner()], seed: 10);
     board = game.board;
     player = game.players.first;
     turn.adjustClank(board, 30);
@@ -157,7 +162,7 @@ void main() {
 
     // Negative clank accumulates when area empty:
     // stash: 30, area: 0, leftover: 0, new: -2 -> stash: 30, area: 0, leftover: -2
-    game = ClankGame(planners: [MockPlanner()]);
+    game = ClankGame(planners: [MockPlanner()], seed: 10);
     board = game.board;
     player = game.players.first;
     turn.adjustClank(board, -2);
@@ -192,7 +197,7 @@ void main() {
     // - Positive clank (e.g. Dead Run) -- Does this negate the negative?
     // - Heal (or dragon attack and then heal)
     // - Postive Clank -> Should this now add to area?  Currently don't.
-    game = ClankGame(planners: [MockPlanner()]);
+    game = ClankGame(planners: [MockPlanner()], seed: 10);
     board = game.board;
     player = game.players.first;
     turn.adjustClank(board, 30);
@@ -289,7 +294,7 @@ void main() {
   });
 
   test('acquireClank effect', () {
-    var game = ClankGame(planners: [MockPlanner()]);
+    var game = ClankGame(planners: [MockPlanner()], seed: 10);
     var board = game.board;
     board.dungeonRow.addAll(library.make('Emerald', 1));
     var emerald = board.dungeonRow.last.type;
@@ -347,7 +352,7 @@ void main() {
   });
 
   test('negative clank', () {
-    var game = ClankGame(planners: [MockPlanner()]);
+    var game = ClankGame(planners: [MockPlanner()], seed: 10);
     Turn turn = Turn(player: game.players.first);
     expect(game.board.clankArea.totalPlayerCubes, 0);
     addAndPlayCard(game, turn, 'Stumble');
@@ -406,7 +411,7 @@ void main() {
   });
 
   test('arrival effects happen before dragon attack', () {
-    var game = ClankGame(planners: [MockPlanner(), MockPlanner()]);
+    var game = ClankGame(planners: [MockPlanner(), MockPlanner()], seed: 10);
     var board = game.board;
     Turn turn = Turn(player: game.activePlayer);
     board.dungeonRow = [];
@@ -929,6 +934,31 @@ void main() {
     expect(board.dragonBag.totalCubes, 24); // No attacks were made.
   });
 
+  test('treasure hunter triggers arrival effects', () {
+    var game = ClankGame(planners: [MockPlanner()], seed: 10);
+    var board = game.board;
+    var player = game.activePlayer;
+    var turn = Turn(player: player);
+    board.dungeonDeck = game.library.make('Watcher', 1);
+    addAndPlayCard(game, turn, 'Treasure Hunter');
+    var possibleActions = ActionGenerator(turn, board).possibleQueuedEffects();
+    game.executeAction(turn, possibleActions.first);
+    expect(board.clankArea.totalPlayerCubes, 1); // Arrival clank triggers.
+  });
+
+  test('initial dungeon row can trigger arrival clank', () {
+    var game = ClankGame(planners: [MockPlanner()], seed: 10);
+    var board = game.board;
+    var player = game.activePlayer;
+    var turn = Turn(player: player);
+    expect(board.clankArea.totalPlayerCubes, 0); // Random seed has none.
+
+    board.dungeonDeck = game.library.make('Watcher', 6);
+    board.dungeonRow = [];
+    var triggers = board.fillDungeonRowFirstTimeReplacingDragons(Random());
+    expect(triggers.clankForAll, 6); // Arrival clank triggers.
+  });
+
   test('Master Burglar', () {
     var game = ClankGame(planners: [MockPlanner()]);
     var player = game.activePlayer;
@@ -1005,4 +1035,222 @@ void main() {
     game.executeAction(turn, AcquireCard(cardType: emerald));
     expect(turn.skill, 2); // Second purchase is 2 skill cheaper!
   });
+
+  test('possibleCardPlays', () {
+    var game = ClankGame(planners: [MockPlanner()]);
+    var board = game.board;
+    var player = game.activePlayer;
+
+    var turn = Turn(player: player);
+    var generator = ActionGenerator(turn, board);
+
+    player.deck.hand = [];
+    var plays = generator.possibleCardPlays();
+    expect(plays.length, 0);
+
+    player.deck.hand = library.make('Burgle', 5);
+    plays = generator.possibleCardPlays();
+    expect(plays.length, 1); // Only consider one play per card type.
+
+    player.deck.hand = library.make('Mister Whiskers', 1);
+    plays = generator.possibleCardPlays();
+    expect(plays.length, 2); // Multiple considered plays for OR types.
+
+    // player.deck.hand = library.make('Apothecary', 1);
+    // plays = generator.possibleCardPlays();
+    // expect(plays.length, 1); // Only one play when conditions can't be met.
+
+    // player.deck.hand = library.make('Apothecary', 1);
+    // player.deck.hand.addAll(library.make('Burgle', 2));
+    // plays = generator.possibleCardPlays();
+    // expect(plays.length, 5); // 2 burgle + 3 apothecary options
+
+    // player.deck.hand = library.make('Apothecary', 1);
+    // player.deck.hand.addAll(library.make('Burgle', 1));
+    // player.deck.hand.addAll(library.make('Stumble', 1));
+
+    // plays = generator.possibleCardPlays();
+    // expect(plays.length, 8); // 2 burgle + 2 x 3 apothecary options.
+  });
+
+  test('Underworld Dealing', () {
+    var game = ClankGame(planners: [MockPlanner()]);
+    var player = game.activePlayer;
+    var turn = Turn(player: player);
+
+    var underWorldDealing = cardType('Underworld Dealing');
+    addAndPlayCard(game, turn, underWorldDealing.name, orEffectIndex: 0);
+    expect(player.gold, 1);
+
+    // Not allowed to play the second effect w/o the gold for it.
+    expect(
+        () => addAndPlayCard(game, turn, underWorldDealing.name,
+            orEffectIndex: 1),
+        throwsArgumentError);
+
+    player.gold = 7;
+    addAndPlayCard(game, turn, underWorldDealing.name, orEffectIndex: 1);
+    expect(player.gold, 0);
+    expect(player.deck.discardPile.length, 2);
+  });
+
+  test('Wand of Wind', () {
+    var game = ClankGame(planners: [MockPlanner()]);
+    var board = game.board;
+    var player = game.activePlayer;
+    var turn = Turn(player: player);
+
+    var wandOfWind = cardType('Wand of Wind');
+    addAndPlayCard(game, turn, wandOfWind.name, orEffectIndex: 0);
+    expect(turn.teleports, 1);
+
+    var builder = GraphBuilder();
+    var from = Space.at(0, 0);
+    var to = Space.at(0, 1, special: Special.majorSecret);
+    var secret =
+        game.box.makeAllLootTokens().firstWhere((loot) => loot.isMajorSecret);
+    to.tokens.add(secret);
+    builder.connect(from, to, monsters: 2);
+    board.graph = Graph(start: from, allSpaces: [from, to]);
+    player.token.moveTo(from);
+
+    addAndPlayCard(game, turn, wandOfWind.name, orEffectIndex: 1);
+    expect(player.loot.length, 1);
+
+    // Artifacts are not secrets and can't be grabbed.
+    from = Space.at(0, 0);
+    to = Space.at(0, 1, special: Special.majorSecret);
+    var artifact =
+        game.box.makeAllLootTokens().firstWhere((loot) => loot.isArtifact);
+    to.tokens.add(artifact);
+    builder.connect(from, to, monsters: 2);
+    board.graph = Graph(start: from, allSpaces: [from, to]);
+    player.token.moveTo(from);
+
+    expect(() => addAndPlayCard(game, turn, wandOfWind.name, orEffectIndex: 1),
+        throwsArgumentError);
+  }, skip: 'Unimplemented');
+
+  test('arriveReturnDragonCubes effect', () {
+    var game = ClankGame(planners: [MockPlanner()]);
+    var board = game.board;
+    var turn = Turn(player: game.activePlayer);
+
+    board.dungeonRow = [];
+
+    expect(board.dragonBag.dragonCubesLeft, 24);
+    board.dungeonDeck = library.make('Shrine', 1);
+    ArrivalTriggers triggers = board.refillDungeonRow();
+    expect(board.dungeonRow.length, 1);
+    game.executeArrivalTriggers(turn, triggers);
+    expect(triggers.refillDragonCubes, 3);
+    expect(board.dragonBag.dragonCubesLeft, 24);
+
+    board.dragonBag.dragonCubesLeft = 10;
+    board.dungeonDeck = library.make('Shrine', 1);
+    triggers = board.refillDungeonRow();
+    expect(board.dungeonRow.length, 2);
+    game.executeArrivalTriggers(turn, triggers);
+    expect(triggers.refillDragonCubes, 3);
+    expect(board.dragonBag.dragonCubesLeft, 13);
+
+    board.dragonBag.dragonCubesLeft = 10;
+    board.dungeonDeck = library.make('Shrine', 2);
+    triggers = board.refillDungeonRow();
+    expect(board.dungeonRow.length, 4);
+    game.executeArrivalTriggers(turn, triggers);
+    expect(triggers.refillDragonCubes, 6);
+    expect(board.dragonBag.dragonCubesLeft, 16);
+  });
+
+  test('Shrine use effects', () {
+    var game = ClankGame(planners: [MockPlanner()]);
+    var board = game.board;
+    var player = game.activePlayer;
+    var turn = Turn(player: player);
+
+    var shrine = cardType('Shrine');
+    board.dungeonRow = library.make('Shrine', 2);
+    turn.skill = 2;
+    game.executeAction(turn, UseDevice(cardType: shrine, orEffectIndex: 0));
+    expect(player.gold, 1);
+
+    board.takeDamage(player.color, 2);
+    turn.skill = 2;
+    game.executeAction(turn, UseDevice(cardType: shrine, orEffectIndex: 1));
+    expect(board.damageTakenByPlayer(player.color), 1);
+  });
+
+  test('Mister Whiskers', () {
+    var game = ClankGame(planners: [MockPlanner()]);
+    var board = game.board;
+    var player = game.activePlayer;
+    var turn = Turn(player: player);
+
+    var mrWhiskers = cardType('Mister Whiskers');
+    turn.adjustClank(board, 2);
+    expect(board.clankArea.totalPlayerCubes, 2);
+    expect(board.dragonBag.totalCubes, 24);
+    expect(board.cubeCountForNormalDragonAttack(), 3);
+    addAndPlayCard(game, turn, mrWhiskers.name, orEffectIndex: 0);
+    expect(board.dragonBag.totalCubes, 23); // 24 + 2 - 3 = 23
+    expect(board.clankArea.totalPlayerCubes, 0);
+    // Might have might have taken damage depending on random.
+
+    expect(turn.leftoverClankReduction, 0);
+    addAndPlayCard(game, turn, mrWhiskers.name, orEffectIndex: 1);
+    expect(turn.leftoverClankReduction, -2);
+  });
+
+  test('Dragon Shrine', () {
+    var game = ClankGame(planners: [MockPlanner(), MockPlanner()]);
+    var board = game.board;
+    var player = game.activePlayer;
+    var turn = Turn(player: player);
+
+    var dragonShrine = cardType('Dragon Shrine');
+    expect(board.cubeCountForNormalDragonAttack(), 3);
+    board.dungeonRow = library.make('Dragon Shrine', 2);
+    expect(board.cubeCountForNormalDragonAttack(), 5); // +1 danger from each
+    turn.skill = 4;
+    game.executeAction(
+        turn, UseDevice(cardType: dragonShrine, orEffectIndex: 0));
+    expect(player.gold, 2);
+    expect(board.cubeCountForNormalDragonAttack(), 4);
+    expect(board.dungeonDiscard.length, 1);
+
+    turn.skill = 4;
+    game.executeAction(
+        turn, UseDevice(cardType: dragonShrine, orEffectIndex: 1));
+    expect(player.deck.cardCount, 10); // 10 starter cards.
+    player.deck.discardPile.addAll(player.deck.hand);
+    player.deck.hand = [];
+    game.executeEndOfTurn(turn);
+    expect(player.deck.cardCount, 9); // One card gone
+  }, skip: 'Dragon Shrine unimplemented');
+
+  test('Apothecary', () {
+    var game = ClankGame(planners: [MockPlanner(), MockPlanner()]);
+    var board = game.board;
+    var player = game.activePlayer;
+    var turn = Turn(player: player);
+
+    var apothecary = cardType('Apothecary');
+    // 1 discard -> 3 swords
+    addAndPlayCard(game, turn, apothecary.name, orEffectIndex: 0);
+    expect(turn.swords, 3);
+    expect(player.deck.hand.length, 4);
+    expect(player.deck.discardPile.length, 1);
+    // 1 discard -> 2 gold
+    addAndPlayCard(game, turn, apothecary.name, orEffectIndex: 1);
+    expect(player.gold, 2);
+    expect(player.deck.hand.length, 3);
+    expect(player.deck.discardPile.length, 2);
+    // 1 discard -> 1 heart
+    board.takeDamage(player.color, 2);
+    addAndPlayCard(game, turn, apothecary.name, orEffectIndex: 2);
+    expect(board.damageTakenByPlayer(player.color), 9);
+    expect(player.deck.hand.length, 2);
+    expect(player.deck.discardPile.length, 3);
+  }, skip: 'Apothecary unimplemented');
 }

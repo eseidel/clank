@@ -16,7 +16,17 @@ class Action {}
 
 class PlayCard extends Action {
   final CardType cardType;
-  PlayCard(this.cardType);
+  late final OrEffect? orEffect;
+  PlayCard(this.cardType, {int? orEffectIndex})
+      : orEffect =
+            orEffectIndex != null ? cardType.orEffects[orEffectIndex] : null {
+    if (cardType.interaction != Interaction.buy) {
+      throw ArgumentError('Only buyable cards can be played.');
+    }
+    if (cardType.orEffects.isNotEmpty && orEffect == null) {
+      throw ArgumentError('OrEffect required for cardTypes with orEffects');
+    }
+  }
 }
 
 class Traverse extends Action {
@@ -39,6 +49,9 @@ class Traverse extends Action {
 class AcquireCard extends Action {
   final CardType cardType;
   AcquireCard({required this.cardType}) {
+    if (cardType.interaction != Interaction.buy) {
+      throw ArgumentError('Only buyable cards can be acquired.');
+    }
     assert(cardType.skillCost > 0);
     assert(cardType.swordsCost == 0);
   }
@@ -52,6 +65,9 @@ class UseItem extends Action {
 class Fight extends Action {
   final CardType cardType;
   Fight({required this.cardType}) {
+    if (cardType.interaction != Interaction.fight) {
+      throw ArgumentError('Only monster cards can be fought.');
+    }
     assert(cardType.skillCost == 0);
     assert(cardType.swordsCost > 0);
   }
@@ -59,15 +75,27 @@ class Fight extends Action {
 
 class UseDevice extends Action {
   final CardType cardType;
-  UseDevice({required this.cardType}) {
+  final OrEffect? orEffect;
+
+  UseDevice({required this.cardType, int? orEffectIndex})
+      : orEffect =
+            orEffectIndex != null ? cardType.orEffects[orEffectIndex] : null {
     assert(cardType.skillCost > 0);
     assert(cardType.swordsCost == 0);
+    if (cardType.interaction != Interaction.use) {
+      throw ArgumentError('Only device cards can be used.');
+    }
+    if (cardType.orEffects.isNotEmpty && orEffect == null) {
+      throw ArgumentError('OrEffect required for cardTypes with orEffects');
+    }
   }
 }
 
 class ReplaceCardInDungeonRow extends Action {
   final CardType cardType;
-  ReplaceCardInDungeonRow(this.cardType);
+  ReplaceCardInDungeonRow(this.cardType) {
+    assert(cardType.set == CardSet.dungeon);
+  }
 }
 
 class EndTurn extends Action {}
@@ -193,8 +221,23 @@ class ActionGenerator {
 
   ActionGenerator(this.turn, this.board);
 
-  Iterable<PlayCard> possibleCardPlays() =>
-      uniqueValues(turn.hand.map((card) => PlayCard(card.type)));
+  Iterable<PlayCard> possibleCardPlays() sync* {
+    Set<CardType> seenTypes = {};
+    for (var card in turn.hand) {
+      var cardType = card.type;
+      // Avoid producing the same type of plays multiple times.
+      if (seenTypes.contains(cardType)) continue;
+      seenTypes.add(cardType);
+      if (cardType.orEffects.isNotEmpty) {
+        for (int i = 0; i < cardType.orEffects.length; i++) {
+          // Need to check the orEffect is possible!
+          yield PlayCard(cardType, orEffectIndex: i);
+        }
+      } else {
+        yield PlayCard(cardType);
+      }
+    }
+  }
 
   Iterable<Traverse> possibleMoves() sync* {
     int hpAvailableForTraversal = turn.hpAvailableForMonsterTraversals(board);
