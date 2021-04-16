@@ -1,6 +1,3 @@
-import 'dart:math';
-
-import 'package:clank/cards.dart';
 import 'package:clank/clank.dart';
 import 'package:clank/graph.dart';
 import 'package:clank/planner.dart';
@@ -9,17 +6,10 @@ import 'package:test/test.dart';
 void main() {
   Library library = Library();
 
-  // Does this belong on Turn?
-  int stashClankCount(Board board, Player player) =>
-      board.playerCubeStashes.countFor(player.color);
-
-  int areaClankCount(Board board, Player player) =>
-      board.clankArea.countFor(player.color);
-
-  // int bagClankCount(Board board, Player player) =>
-  //     board.dragonBag.countFor(player.color);
-
-  CardType cardType(String name) => library.cardTypeByName(name);
+  ClankGame makeGameWithPlayerCount(int count) {
+    return ClankGame(
+        planners: List.generate(count, (index) => MockPlanner()), seed: 10);
+  }
 
   void addAndPlayCard(ClankGame game, Turn turn, String name,
       {int? orEffectIndex}) {
@@ -29,7 +19,7 @@ void main() {
   }
 
   test('consider moves which involve spending health', () {
-    var game = ClankGame(planners: [MockPlanner()]);
+    var game = makeGameWithPlayerCount(1);
     var board = game.board;
     var player = game.activePlayer;
 
@@ -53,7 +43,7 @@ void main() {
   });
 
   test('crystal cave exhaustion', () {
-    var game = ClankGame(planners: [MockPlanner()]);
+    var game = makeGameWithPlayerCount(1);
     var board = game.board;
     var player = game.activePlayer;
 
@@ -97,7 +87,7 @@ void main() {
   });
 
   test('master key unlocks tunnels', () {
-    var game = ClankGame(planners: [MockPlanner()]);
+    var game = makeGameWithPlayerCount(1);
     var board = game.board;
     var player = game.activePlayer;
     var allLoot = game.box.makeAllLootTokens();
@@ -128,7 +118,7 @@ void main() {
   });
 
   test('possibleCardPlays', () {
-    var game = ClankGame(planners: [MockPlanner()]);
+    var game = makeGameWithPlayerCount(1);
     var board = game.board;
     var player = game.activePlayer;
 

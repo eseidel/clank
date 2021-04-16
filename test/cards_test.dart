@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:clank/cards.dart';
 import 'package:clank/clank.dart';
 import 'package:clank/graph.dart';
@@ -9,15 +7,10 @@ import 'package:test/test.dart';
 void main() {
   Library library = Library();
 
-  // Does this belong on Turn?
-  int stashClankCount(Board board, Player player) =>
-      board.playerCubeStashes.countFor(player.color);
-
-  int areaClankCount(Board board, Player player) =>
-      board.clankArea.countFor(player.color);
-
-  // int bagClankCount(Board board, Player player) =>
-  //     board.dragonBag.countFor(player.color);
+  ClankGame makeGameWithPlayerCount(int count) {
+    return ClankGame(
+        planners: List.generate(count, (index) => MockPlanner()), seed: 10);
+  }
 
   CardType cardType(String name) => library.cardTypeByName(name);
 
@@ -29,7 +22,7 @@ void main() {
   }
 
   test('conditional points dwarven peddler', () {
-    var game = ClankGame(planners: [MockPlanner()]);
+    var game = makeGameWithPlayerCount(1);
     var player = game.activePlayer;
     var allLoot = game.box.makeAllLootTokens();
 
@@ -66,7 +59,7 @@ void main() {
   });
 
   test('mountain king triggered effects', () {
-    var game = ClankGame(planners: [MockPlanner()]);
+    var game = makeGameWithPlayerCount(1);
     var crown =
         game.box.makeAllLootTokens().firstWhere((loot) => loot.loot.isCrown);
     var player = game.activePlayer;
@@ -82,7 +75,7 @@ void main() {
   });
 
   test('queen of hearts triggered effects', () {
-    var game = ClankGame(planners: [MockPlanner()]);
+    var game = makeGameWithPlayerCount(1);
     var crown =
         game.box.makeAllLootTokens().firstWhere((loot) => loot.loot.isCrown);
     var player = game.activePlayer;
@@ -98,7 +91,7 @@ void main() {
   });
 
   test('kobold merchant triggered effects', () {
-    var game = ClankGame(planners: [MockPlanner()]);
+    var game = makeGameWithPlayerCount(1);
     var artifact =
         game.box.makeAllLootTokens().firstWhere((loot) => loot.isArtifact);
     var player = game.activePlayer;
@@ -112,7 +105,7 @@ void main() {
   });
 
   test('rebel triggered effects', () {
-    var game = ClankGame(planners: [MockPlanner()]);
+    var game = makeGameWithPlayerCount(1);
     var player = game.activePlayer;
     Turn turn = Turn(player: player);
     addAndPlayCard(game, turn, 'Rebel Miner');
@@ -142,7 +135,7 @@ void main() {
   });
 
   test('wand of recall triggered effects', () {
-    var game = ClankGame(planners: [MockPlanner()]);
+    var game = makeGameWithPlayerCount(1);
     var artifact =
         game.box.makeAllLootTokens().firstWhere((loot) => loot.isArtifact);
     var player = game.activePlayer;
@@ -157,7 +150,7 @@ void main() {
   });
 
   test('archaeologist triggered effects', () {
-    var game = ClankGame(planners: [MockPlanner()]);
+    var game = makeGameWithPlayerCount(1);
     var monkeyIdol =
         game.box.makeAllLootTokens().firstWhere((loot) => loot.isMonkeyIdol);
     var player = game.activePlayer;
@@ -174,7 +167,7 @@ void main() {
   });
 
   test('flying carpet ignores exhaustion and monsters', () {
-    var game = ClankGame(planners: [MockPlanner()]);
+    var game = makeGameWithPlayerCount(1);
     var board = game.board;
     var player = game.activePlayer;
 
@@ -211,8 +204,7 @@ void main() {
   });
 
   test('treasure hunter', () {
-    // Seed is important to ensure dungeonRow doesn't have duplicates.
-    var game = ClankGame(planners: [MockPlanner()], seed: 0);
+    var game = makeGameWithPlayerCount(1);
     var board = game.board;
     var player = game.activePlayer;
     var turn = Turn(player: player);
@@ -231,7 +223,7 @@ void main() {
   });
 
   test('treasure hunter triggers arrival effects', () {
-    var game = ClankGame(planners: [MockPlanner()], seed: 10);
+    var game = makeGameWithPlayerCount(1);
     var board = game.board;
     var player = game.activePlayer;
     var turn = Turn(player: player);
@@ -242,7 +234,7 @@ void main() {
     expect(board.clankArea.totalPlayerCubes, 1); // Arrival clank triggers.
   });
   test('Master Burglar', () {
-    var game = ClankGame(planners: [MockPlanner()]);
+    var game = makeGameWithPlayerCount(1);
     var player = game.activePlayer;
     var turn = Turn(player: player);
 
@@ -257,7 +249,7 @@ void main() {
     expect(player.countOfCards(game.library.cardTypeByName('Burgle')), 5);
   });
   test('Gem Collector', () {
-    var game = ClankGame(planners: [MockPlanner()]);
+    var game = makeGameWithPlayerCount(1);
     var board = game.board;
     var player = game.activePlayer;
     var turn = Turn(player: player);
@@ -281,7 +273,7 @@ void main() {
   });
 
   test('Underworld Dealing', () {
-    var game = ClankGame(planners: [MockPlanner()]);
+    var game = makeGameWithPlayerCount(1);
     var player = game.activePlayer;
     var turn = Turn(player: player);
 
@@ -302,7 +294,7 @@ void main() {
   });
 
   test('Wand of Wind', () {
-    var game = ClankGame(planners: [MockPlanner()]);
+    var game = makeGameWithPlayerCount(1);
     var board = game.board;
     var player = game.activePlayer;
     var turn = Turn(player: player);
@@ -339,7 +331,7 @@ void main() {
   }, skip: 'Unimplemented');
 
   test('Shrine use effects', () {
-    var game = ClankGame(planners: [MockPlanner()]);
+    var game = makeGameWithPlayerCount(1);
     var board = game.board;
     var player = game.activePlayer;
     var turn = Turn(player: player);
@@ -357,7 +349,7 @@ void main() {
   });
 
   test('Mister Whiskers', () {
-    var game = ClankGame(planners: [MockPlanner()]);
+    var game = makeGameWithPlayerCount(1);
     var board = game.board;
     var player = game.activePlayer;
     var turn = Turn(player: player);
@@ -378,7 +370,7 @@ void main() {
   });
 
   test('Dragon Shrine', () {
-    var game = ClankGame(planners: [MockPlanner(), MockPlanner()]);
+    var game = makeGameWithPlayerCount(2);
     var board = game.board;
     var player = game.activePlayer;
     var turn = Turn(player: player);
@@ -405,7 +397,7 @@ void main() {
   }, skip: 'Dragon Shrine unimplemented');
 
   test('Apothecary', () {
-    var game = ClankGame(planners: [MockPlanner(), MockPlanner()]);
+    var game = makeGameWithPlayerCount(2);
     var board = game.board;
     var player = game.activePlayer;
     var turn = Turn(player: player);

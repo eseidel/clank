@@ -1,6 +1,5 @@
 import 'dart:math';
 
-import 'package:clank/cards.dart';
 import 'package:clank/clank.dart';
 import 'package:clank/graph.dart';
 import 'package:clank/planner.dart';
@@ -9,17 +8,17 @@ import 'package:test/test.dart';
 void main() {
   Library library = Library();
 
+  ClankGame makeGameWithPlayerCount(int count) {
+    return ClankGame(
+        planners: List.generate(count, (index) => MockPlanner()), seed: 10);
+  }
+
   // Does this belong on Turn?
   int stashClankCount(Board board, Player player) =>
       board.playerCubeStashes.countFor(player.color);
 
   int areaClankCount(Board board, Player player) =>
       board.clankArea.countFor(player.color);
-
-  // int bagClankCount(Board board, Player player) =>
-  //     board.dragonBag.countFor(player.color);
-
-  CardType cardType(String name) => library.cardTypeByName(name);
 
   void addAndPlayCard(ClankGame game, Turn turn, String name,
       {int? orEffectIndex}) {
@@ -46,7 +45,7 @@ void main() {
   });
 
   test('initial deal', () {
-    var game = ClankGame(planners: [MockPlanner()], seed: 0);
+    var game = makeGameWithPlayerCount(1);
     expect(game.players.length, 1);
     expect(game.players.first.deck.cardCount, 10);
   });
@@ -97,7 +96,7 @@ void main() {
   });
 
   test('negative clank', () {
-    var game = ClankGame(planners: [MockPlanner()], seed: 10);
+    var game = makeGameWithPlayerCount(1);
     Turn turn = Turn(player: game.players.first);
     expect(game.board.clankArea.totalPlayerCubes, 0);
     addAndPlayCard(game, turn, 'Stumble');
@@ -123,7 +122,7 @@ void main() {
 
     // Common-case, clank addition:
     // stash: 30, area: 0, leftover: 0, new: +2 -> stash: 28, area: 2, leftover: 0
-    ClankGame game = ClankGame(planners: [MockPlanner()], seed: 10);
+    var game = makeGameWithPlayerCount(1);
     Board board = game.board;
     var player = game.players.first;
     Turn turn = Turn(player: player);
@@ -138,7 +137,7 @@ void main() {
 
     // Running out of clank in stash:
     // stash: 0, area: 30, leftover: 0, new: +2 -> stash: 0, area: 30, leftover: 0
-    game = ClankGame(planners: [MockPlanner()], seed: 10);
+    game = makeGameWithPlayerCount(1);
     board = game.board;
     player = game.players.first;
     turn.adjustClank(board, 30);
@@ -161,7 +160,7 @@ void main() {
 
     // Negative clank accumulates when area empty:
     // stash: 30, area: 0, leftover: 0, new: -2 -> stash: 30, area: 0, leftover: -2
-    game = ClankGame(planners: [MockPlanner()], seed: 10);
+    game = makeGameWithPlayerCount(1);
     board = game.board;
     player = game.players.first;
     turn.adjustClank(board, -2);
@@ -196,7 +195,7 @@ void main() {
     // - Positive clank (e.g. Dead Run) -- Does this negate the negative?
     // - Heal (or dragon attack and then heal)
     // - Postive Clank -> Should this now add to area?  Currently don't.
-    game = ClankGame(planners: [MockPlanner()], seed: 10);
+    game = makeGameWithPlayerCount(1);
     board = game.board;
     player = game.players.first;
     turn.adjustClank(board, 30);
@@ -217,7 +216,7 @@ void main() {
   });
 
   test('drawCards effect', () {
-    var game = ClankGame(planners: [MockPlanner()], seed: 0);
+    var game = makeGameWithPlayerCount(1);
     var player = game.players.first;
     Turn turn = Turn(player: player);
     expect(turn.hand.length, 5);
@@ -236,7 +235,7 @@ void main() {
   });
 
   test('gainGold effect', () {
-    var game = ClankGame(planners: [MockPlanner()], seed: 0);
+    var game = makeGameWithPlayerCount(1);
     var player = game.players.first;
     Turn turn = Turn(player: player);
     expect(player.gold, 0);
@@ -252,13 +251,9 @@ void main() {
   });
 
   test('dragon attack rage cube count', () {
-    var twoPlayer =
-        ClankGame(planners: [MockPlanner(), MockPlanner()], seed: 0);
-    var threePlayer = ClankGame(
-        planners: [MockPlanner(), MockPlanner(), MockPlanner()], seed: 0);
-    var fourPlayer = ClankGame(
-        planners: [MockPlanner(), MockPlanner(), MockPlanner(), MockPlanner()],
-        seed: 0);
+    var twoPlayer = makeGameWithPlayerCount(2);
+    var threePlayer = makeGameWithPlayerCount(3);
+    var fourPlayer = makeGameWithPlayerCount(4);
 
     expect(twoPlayer.board.cubeCountForNormalDragonAttack(), 3);
     expect(threePlayer.board.cubeCountForNormalDragonAttack(), 2);
@@ -283,8 +278,7 @@ void main() {
   });
 
   test('dragon attack cube count with danger', () {
-    var twoPlayer =
-        ClankGame(planners: [MockPlanner(), MockPlanner()], seed: 0);
+    var twoPlayer = makeGameWithPlayerCount(2);
     expect(twoPlayer.board.cubeCountForNormalDragonAttack(), 3);
     twoPlayer.board.dungeonRow = library.make('Kobold', 1);
     expect(twoPlayer.board.cubeCountForNormalDragonAttack(), 4);
@@ -293,7 +287,7 @@ void main() {
   });
 
   test('acquireClank effect', () {
-    var game = ClankGame(planners: [MockPlanner()], seed: 10);
+    var game = makeGameWithPlayerCount(1);
     var board = game.board;
     board.dungeonRow.addAll(library.make('Emerald', 1));
     var emerald = board.dungeonRow.last.type;
@@ -305,7 +299,7 @@ void main() {
   });
 
   test('acquireSwords effect', () {
-    var game = ClankGame(planners: [MockPlanner()]);
+    var game = makeGameWithPlayerCount(1);
     var board = game.board;
     board.dungeonRow.addAll(library.make('Silver Spear', 1));
     var silverSpear = board.dungeonRow.last.type;
@@ -317,7 +311,7 @@ void main() {
   });
 
   test('acquireBoots effect', () {
-    var game = ClankGame(planners: [MockPlanner()]);
+    var game = makeGameWithPlayerCount(1);
     var board = game.board;
     board.dungeonRow.addAll(library.make('Boots of Swiftness', 1));
     var bootsOfSwiftness = board.dungeonRow.last.type;
@@ -329,7 +323,7 @@ void main() {
   });
 
   test('acquireHearts effect', () {
-    var game = ClankGame(planners: [MockPlanner()]);
+    var game = makeGameWithPlayerCount(1);
     var player = game.players.first;
     var board = game.board;
     board.dungeonRow.addAll(library.make('Amulet of Vigor', 2));
@@ -351,7 +345,7 @@ void main() {
   });
 
   test('negative clank', () {
-    var game = ClankGame(planners: [MockPlanner()], seed: 10);
+    var game = makeGameWithPlayerCount(1);
     Turn turn = Turn(player: game.players.first);
     expect(game.board.clankArea.totalPlayerCubes, 0);
     addAndPlayCard(game, turn, 'Stumble');
@@ -364,7 +358,7 @@ void main() {
   });
 
   test('dragon reveal causes attack', () {
-    var game = ClankGame(planners: [MockPlanner()]);
+    var game = makeGameWithPlayerCount(1);
     var board = game.board;
     // Refill works, dragonRevealed is false for non-dragon cards.
     board.dungeonRow = [];
@@ -392,7 +386,7 @@ void main() {
   });
 
   test('arriveClank effect', () {
-    var game = ClankGame(planners: [MockPlanner()]);
+    var game = makeGameWithPlayerCount(1);
     var board = game.board;
     // Refill works, dragonRevealed is false for non-dragon cards.
     board.dungeonRow = [];
@@ -410,7 +404,7 @@ void main() {
   });
 
   test('arrival effects happen before dragon attack', () {
-    var game = ClankGame(planners: [MockPlanner(), MockPlanner()], seed: 10);
+    var game = makeGameWithPlayerCount(2);
     var board = game.board;
     Turn turn = Turn(player: game.activePlayer);
     board.dungeonRow = [];
@@ -432,7 +426,7 @@ void main() {
   });
 
   test('canTakeArtifact', () {
-    var game = ClankGame(planners: [MockPlanner()]);
+    var game = makeGameWithPlayerCount(1);
     var player = game.activePlayer;
     expect(player.canTakeArtifact, true);
     var loot = game.box.makeAllLootTokens();
@@ -445,7 +439,7 @@ void main() {
   });
 
   test('fight monsters', () {
-    var game = ClankGame(planners: [MockPlanner()]);
+    var game = makeGameWithPlayerCount(1);
     var player = game.activePlayer;
     var board = game.board;
     board.dungeonRow = library.make('Kobold', 1);
@@ -459,7 +453,7 @@ void main() {
   });
 
   test('use device', () {
-    var game = ClankGame(planners: [MockPlanner()]);
+    var game = makeGameWithPlayerCount(1);
     var player = game.activePlayer;
     var board = game.board;
     board.dungeonRow = library.make('Ladder', 1);
@@ -473,7 +467,7 @@ void main() {
   });
 
   test('zero score if knocked out in depths', () {
-    var game = ClankGame(planners: [MockPlanner()]);
+    var game = makeGameWithPlayerCount(1);
     var player = game.activePlayer;
     expect(game.pointsForPlayer(player), 0);
     player.gold = 5;
@@ -485,7 +479,7 @@ void main() {
   });
 
   test('picking up an artifact increases dragon rage', () {
-    var game = ClankGame(planners: [MockPlanner(), MockPlanner()]);
+    var game = makeGameWithPlayerCount(2);
     var player = game.activePlayer;
     Turn turn = Turn(player: player);
     turn.boots = 5; // plenty.
@@ -501,7 +495,7 @@ void main() {
   });
 
   test('cubes are not duplicated', () {
-    var game = ClankGame(planners: [MockPlanner()]);
+    var game = makeGameWithPlayerCount(1);
     var board = game.board;
     var player = game.activePlayer;
 
@@ -521,7 +515,7 @@ void main() {
   });
 
   test('fighting goblin', () {
-    var game = ClankGame(planners: [MockPlanner()]);
+    var game = makeGameWithPlayerCount(1);
     var board = game.board;
     var player = game.activePlayer;
 
@@ -544,7 +538,7 @@ void main() {
   });
 
   test('using items', () {
-    var game = ClankGame(planners: [MockPlanner()]);
+    var game = makeGameWithPlayerCount(1);
     var player = game.activePlayer;
     var allItems = game.box.makeAllLootTokens();
     Turn turn = Turn(player: player);
@@ -579,7 +573,7 @@ void main() {
   });
 
   test('conditional points effects', () {
-    var game = ClankGame(planners: [MockPlanner()]);
+    var game = makeGameWithPlayerCount(1);
     var player = game.activePlayer;
     var allLoot = game.box.makeAllLootTokens();
 
@@ -617,7 +611,7 @@ void main() {
   });
 
   test('Exiting dungeon awards mastery token', () {
-    var game = ClankGame(planners: [MockPlanner()]);
+    var game = makeGameWithPlayerCount(1);
     var board = game.board;
     var player = game.activePlayer;
     var allLoot = game.box.makeAllLootTokens();
@@ -641,7 +635,7 @@ void main() {
   });
 
   test('teleport', () {
-    var game = ClankGame(planners: [MockPlanner()]);
+    var game = makeGameWithPlayerCount(1);
     var player = game.activePlayer;
     var board = game.board;
     board.dungeonRow = library.make('Teleporter', 1);
@@ -664,10 +658,8 @@ void main() {
   });
 
   test('initial dungeon row can trigger arrival clank', () {
-    var game = ClankGame(planners: [MockPlanner()], seed: 10);
+    var game = makeGameWithPlayerCount(1);
     var board = game.board;
-    var player = game.activePlayer;
-    var turn = Turn(player: player);
     expect(board.clankArea.totalPlayerCubes, 0); // Random seed has none.
 
     board.dungeonDeck = game.library.make('Watcher', 6);
@@ -677,13 +669,13 @@ void main() {
   });
 
   test('unique values', () {
-    var game = ClankGame(planners: [MockPlanner()]);
+    var game = makeGameWithPlayerCount(1);
     game.board.dungeonRow = game.library.make('Master Burglar', 3);
     expect(game.board.availableCardTypes.length, 5); // 1 for row, 4 on reserve.
   });
 
   test('arriveReturnDragonCubes effect', () {
-    var game = ClankGame(planners: [MockPlanner()]);
+    var game = makeGameWithPlayerCount(1);
     var board = game.board;
     var turn = Turn(player: game.activePlayer);
 
