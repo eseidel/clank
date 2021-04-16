@@ -104,8 +104,8 @@ class CardType {
   // Split into subtype specific constructors.
   const CardType({
     required this.name,
-    required this.set,
     required this.count,
+    this.set = CardSet.dungeon,
     this.skill = 0,
     this.boots = 0,
     this.swords = 0,
@@ -119,7 +119,6 @@ class CardType {
     this.acquireSwords = 0,
     this.acquireHearts = 0,
     this.acquireBoots = 0,
-    this.danger = false,
     this.location = Location.everywhere,
     this.drawCards = 0,
     this.gainGold = 0,
@@ -134,8 +133,9 @@ class CardType {
     this.triggers,
     this.orEffects = const [],
     this.subtype = CardSubType.none,
-    this.neverDiscards = false,
   })  : swordsCost = 0,
+        neverDiscards = false,
+        danger = false,
         assert(skill >= 0),
         assert(boots >= 0),
         assert(swords >= 0),
@@ -152,13 +152,12 @@ class CardType {
 
   const CardType.monster({
     required this.name,
-    required this.set,
     required this.count,
+    required this.swordsCost,
+    this.set = CardSet.dungeon,
     this.skill = 0,
     this.boots = 0,
-    this.swords = 0,
     this.clank = 0,
-    required this.swordsCost,
     this.dragon = false,
     this.arriveClank = 0,
     this.arriveReturnDragonCubes = 0,
@@ -167,14 +166,11 @@ class CardType {
     this.drawCards = 0,
     this.gainGold = 0,
     this.othersClank = 0,
-    this.specialEffect = SpecialEffect.none,
-    this.queuedEffect,
-    this.endOfTurn,
-    this.triggers,
     this.neverDiscards = false,
   })  : subtype = CardSubType.monster,
         skillCost = 0,
         points = 0,
+        swords = 0,
         acquireClank = 0,
         acquireSwords = 0,
         acquireHearts = 0,
@@ -184,9 +180,12 @@ class CardType {
         ignoreMonsters = false,
         pointsCondition = null,
         orEffects = const [],
+        specialEffect = SpecialEffect.none,
+        endOfTurn = null,
+        queuedEffect = null,
+        triggers = null,
         assert(skill >= 0),
         assert(boots >= 0),
-        assert(swords >= 0),
         assert(swordsCost >= 0),
         assert(arriveClank >= 0),
         assert(gainGold >= 0);
@@ -340,11 +339,18 @@ const List<CardType> baseSetAllCardTypes = [
     points: 7,
     skillCost: 7,
   ),
+  CardType.monster(
+    name: 'Goblin',
+    set: CardSet.reserve,
+    count: 1,
+    gainGold: 1,
+    neverDiscards: true,
+    swordsCost: 2,
+  ),
 
   // Dungeon Deck
   CardType(
     name: 'Sapphire',
-    set: CardSet.dungeon,
     subtype: CardSubType.gem,
     count: 3,
     points: 4,
@@ -355,7 +361,6 @@ const List<CardType> baseSetAllCardTypes = [
   ),
   CardType(
     name: 'Ruby',
-    set: CardSet.dungeon,
     subtype: CardSubType.gem,
     count: 2,
     points: 6,
@@ -366,7 +371,6 @@ const List<CardType> baseSetAllCardTypes = [
   ),
   CardType(
     name: 'Emerald',
-    set: CardSet.dungeon,
     subtype: CardSubType.gem,
     count: 2,
     points: 5,
@@ -377,7 +381,6 @@ const List<CardType> baseSetAllCardTypes = [
   ),
   CardType(
     name: 'Bracers of Agility',
-    set: CardSet.dungeon,
     points: 2,
     count: 2,
     drawCards: 2,
@@ -385,7 +388,6 @@ const List<CardType> baseSetAllCardTypes = [
   ),
   CardType(
     name: 'Pickaxe',
-    set: CardSet.dungeon,
     count: 2,
     points: 2,
     swords: 2,
@@ -394,7 +396,6 @@ const List<CardType> baseSetAllCardTypes = [
   ),
   CardType(
     name: 'Lucky Coin',
-    set: CardSet.dungeon,
     count: 2,
     points: 1,
     skill: 1,
@@ -404,7 +405,6 @@ const List<CardType> baseSetAllCardTypes = [
   ),
   CardType(
     name: 'Tunnel Guide',
-    set: CardSet.dungeon,
     subtype: CardSubType.companion,
     count: 2,
     points: 1,
@@ -414,7 +414,6 @@ const List<CardType> baseSetAllCardTypes = [
   ),
   CardType(
     name: 'Move Silently',
-    set: CardSet.dungeon,
     count: 2,
     boots: 2,
     clank: -2,
@@ -422,7 +421,6 @@ const List<CardType> baseSetAllCardTypes = [
   ),
   CardType(
     name: 'Silver Spear',
-    set: CardSet.dungeon,
     count: 2,
     points: 2,
     swords: 3,
@@ -431,7 +429,6 @@ const List<CardType> baseSetAllCardTypes = [
   ),
   CardType(
     name: 'Sneak',
-    set: CardSet.dungeon,
     count: 2,
     skill: 1,
     boots: 1,
@@ -440,7 +437,6 @@ const List<CardType> baseSetAllCardTypes = [
   ),
   CardType(
     name: 'Cleric of the Sun',
-    set: CardSet.dungeon,
     subtype: CardSubType.companion,
     count: 2,
     points: 1,
@@ -451,7 +447,6 @@ const List<CardType> baseSetAllCardTypes = [
   ),
   CardType(
     name: 'Tattle',
-    set: CardSet.dungeon,
     count: 2,
     skill: 2,
     othersClank: 1,
@@ -459,7 +454,6 @@ const List<CardType> baseSetAllCardTypes = [
   ),
   CardType(
     name: 'Wand of Recall',
-    set: CardSet.dungeon,
     count: 2,
     points: 1,
     skill: 2,
@@ -468,7 +462,6 @@ const List<CardType> baseSetAllCardTypes = [
   ),
   CardType(
     name: 'Archaeologist',
-    set: CardSet.dungeon,
     subtype: CardSubType.companion,
     count: 2,
     points: 1,
@@ -478,7 +471,6 @@ const List<CardType> baseSetAllCardTypes = [
   ),
   CardType(
     name: 'Dead Run',
-    set: CardSet.dungeon,
     count: 2,
     clank: 2,
     boots: 2,
@@ -487,7 +479,6 @@ const List<CardType> baseSetAllCardTypes = [
   ),
   CardType(
     name: 'Treasure Hunter',
-    set: CardSet.dungeon,
     subtype: CardSubType.companion,
     points: 1,
     count: 2,
@@ -498,7 +489,6 @@ const List<CardType> baseSetAllCardTypes = [
   ),
   CardType(
     name: 'Master Burglar',
-    set: CardSet.dungeon,
     subtype: CardSubType.companion,
     points: 2,
     count: 2,
@@ -510,7 +500,6 @@ const List<CardType> baseSetAllCardTypes = [
   // Singletons
   CardType(
     name: 'Flying Carpet',
-    set: CardSet.dungeon,
     count: 1,
     points: 2,
     boots: 2,
@@ -520,7 +509,6 @@ const List<CardType> baseSetAllCardTypes = [
   ),
   CardType(
     name: 'Gem Collector',
-    set: CardSet.dungeon,
     count: 1,
     points: 2,
     skill: 2,
@@ -530,14 +518,12 @@ const List<CardType> baseSetAllCardTypes = [
   ),
   CardType(
     name: 'Brilliance',
-    set: CardSet.dungeon,
     count: 1,
     drawCards: 3,
     skillCost: 6,
   ),
   CardType(
     name: 'Elven Boots',
-    set: CardSet.dungeon,
     count: 1,
     skill: 1,
     boots: 1,
@@ -547,7 +533,6 @@ const List<CardType> baseSetAllCardTypes = [
   ),
   CardType(
     name: 'Diamond',
-    set: CardSet.dungeon,
     subtype: CardSubType.gem,
     count: 1,
     points: 8,
@@ -557,14 +542,12 @@ const List<CardType> baseSetAllCardTypes = [
   ),
   CardType(
     name: 'Treasure Map',
-    set: CardSet.dungeon,
     count: 1,
     gainGold: 5,
     skillCost: 6,
   ),
   CardType(
     name: 'MonkeyBot 3000',
-    set: CardSet.dungeon,
     subtype: CardSubType.companion,
     count: 1,
     clank: 3,
@@ -575,7 +558,6 @@ const List<CardType> baseSetAllCardTypes = [
   ),
   CardType(
     name: 'Scepter of the Ape Lord',
-    set: CardSet.dungeon,
     count: 1,
     clank: 3,
     skill: 3,
@@ -584,7 +566,6 @@ const List<CardType> baseSetAllCardTypes = [
   ),
   CardType(
     name: 'Singing Sword',
-    set: CardSet.dungeon,
     count: 1,
     points: 2,
     skill: 3,
@@ -595,7 +576,6 @@ const List<CardType> baseSetAllCardTypes = [
   ),
   CardType(
     name: 'Elven Cloak',
-    set: CardSet.dungeon,
     count: 1,
     points: 2,
     skill: 1,
@@ -605,7 +585,6 @@ const List<CardType> baseSetAllCardTypes = [
   ),
   CardType(
     name: 'Elven Dagger',
-    set: CardSet.dungeon,
     count: 1,
     points: 2,
     skill: 1,
@@ -615,7 +594,6 @@ const List<CardType> baseSetAllCardTypes = [
   ),
   CardType(
     name: 'Amulet of Vigor',
-    set: CardSet.dungeon,
     count: 1,
     points: 3,
     skill: 4,
@@ -624,7 +602,6 @@ const List<CardType> baseSetAllCardTypes = [
   ),
   CardType(
     name: 'Boots of Swiftness',
-    set: CardSet.dungeon,
     count: 1,
     points: 3,
     boots: 3,
@@ -633,7 +610,6 @@ const List<CardType> baseSetAllCardTypes = [
   ),
   CardType(
     name: 'Wizard',
-    set: CardSet.dungeon,
     subtype: CardSubType.companion,
     count: 1,
     pointsCondition: PointsConditions.wizard,
@@ -642,7 +618,6 @@ const List<CardType> baseSetAllCardTypes = [
   ),
   CardType(
     name: "Dragon's Eye",
-    set: CardSet.dungeon,
     count: 1,
     subtype: CardSubType.gem,
     pointsCondition: PointsConditions.dragonsEye,
@@ -654,7 +629,6 @@ const List<CardType> baseSetAllCardTypes = [
   ),
   CardType(
     name: 'The Duke',
-    set: CardSet.dungeon,
     subtype: CardSubType.companion,
     count: 1,
     pointsCondition: PointsConditions.theDuke,
@@ -664,7 +638,6 @@ const List<CardType> baseSetAllCardTypes = [
   ),
   CardType(
     name: 'Dwarven Peddler',
-    set: CardSet.dungeon,
     subtype: CardSubType.companion,
     count: 1,
     pointsCondition: PointsConditions.dwarvenPeddler,
@@ -674,7 +647,6 @@ const List<CardType> baseSetAllCardTypes = [
   ),
   CardType(
     name: 'Invoker of the Ancients',
-    set: CardSet.dungeon,
     subtype: CardSubType.companion,
     count: 1,
     points: 1,
@@ -684,7 +656,6 @@ const List<CardType> baseSetAllCardTypes = [
   ),
   CardType(
     name: 'Kobold Merchant',
-    set: CardSet.dungeon,
     subtype: CardSubType.companion,
     count: 1,
     points: 1,
@@ -694,7 +665,6 @@ const List<CardType> baseSetAllCardTypes = [
   ),
   CardType(
     name: 'The Mountain King',
-    set: CardSet.dungeon,
     subtype: CardSubType.companion,
     count: 1,
     points: 3,
@@ -706,7 +676,6 @@ const List<CardType> baseSetAllCardTypes = [
   ),
   CardType(
     name: 'The Queen of Hearts',
-    set: CardSet.dungeon,
     subtype: CardSubType.companion,
     count: 1,
     points: 3,
@@ -717,7 +686,6 @@ const List<CardType> baseSetAllCardTypes = [
   ),
   CardType(
     name: 'Rebel Miner',
-    set: CardSet.dungeon,
     subtype: CardSubType.companion,
     count: 1,
     points: 1,
@@ -727,7 +695,6 @@ const List<CardType> baseSetAllCardTypes = [
   ),
   CardType(
     name: 'Rebel Soldier',
-    set: CardSet.dungeon,
     subtype: CardSubType.companion,
     count: 1,
     points: 1,
@@ -737,7 +704,6 @@ const List<CardType> baseSetAllCardTypes = [
   ),
   CardType(
     name: 'Rebel Scout',
-    set: CardSet.dungeon,
     subtype: CardSubType.companion,
     count: 1,
     points: 1,
@@ -747,7 +713,6 @@ const List<CardType> baseSetAllCardTypes = [
   ),
   CardType(
     name: 'Rebel Captain',
-    set: CardSet.dungeon,
     subtype: CardSubType.companion,
     count: 1,
     points: 1,
@@ -757,7 +722,7 @@ const List<CardType> baseSetAllCardTypes = [
   ),
   // CardType(
   //   name: 'Wand of Wind',
-  //   set: CardSet.dungeon,
+  //
   //   count: 1,
   //   points: 3,
   //   orEffects: [
@@ -768,7 +733,6 @@ const List<CardType> baseSetAllCardTypes = [
   // ),
   CardType(
     name: 'Mister Whiskers',
-    set: CardSet.dungeon,
     subtype: CardSubType.companion,
     count: 1,
     points: 1,
@@ -781,7 +745,6 @@ const List<CardType> baseSetAllCardTypes = [
   ),
   CardType(
     name: 'Underworld Dealing',
-    set: CardSet.dungeon,
     count: 1,
     orEffects: [
       OrEffect(gainGold: 1),
@@ -792,16 +755,7 @@ const List<CardType> baseSetAllCardTypes = [
 
   // Monsters
   CardType.monster(
-    name: 'Goblin',
-    set: CardSet.reserve,
-    count: 1,
-    gainGold: 1,
-    neverDiscards: true,
-    swordsCost: 2,
-  ),
-  CardType.monster(
     name: 'Cave Troll',
-    set: CardSet.dungeon,
     count: 1,
     location: Location.deep,
     dragon: true,
@@ -811,7 +765,6 @@ const List<CardType> baseSetAllCardTypes = [
   ),
   CardType.monster(
     name: 'Belcher',
-    set: CardSet.dungeon,
     count: 2,
     dragon: true,
     gainGold: 4,
@@ -820,7 +773,6 @@ const List<CardType> baseSetAllCardTypes = [
   ),
   CardType.monster(
     name: 'Animated Door',
-    set: CardSet.dungeon,
     count: 2,
     dragon: true,
     boots: 1,
@@ -828,7 +780,6 @@ const List<CardType> baseSetAllCardTypes = [
   ),
   CardType.monster(
     name: 'Ogre',
-    set: CardSet.dungeon,
     count: 2,
     dragon: true,
     gainGold: 5,
@@ -836,7 +787,6 @@ const List<CardType> baseSetAllCardTypes = [
   ),
   CardType.monster(
     name: 'Orc Grunt',
-    set: CardSet.dungeon,
     count: 3,
     dragon: true,
     gainGold: 3,
@@ -844,7 +794,6 @@ const List<CardType> baseSetAllCardTypes = [
   ),
   CardType.monster(
     name: 'Crystal Golem',
-    set: CardSet.dungeon,
     count: 2,
     location: Location.crystalCave,
     skill: 3,
@@ -852,7 +801,6 @@ const List<CardType> baseSetAllCardTypes = [
   ),
   CardType.monster(
     name: 'Kobold',
-    set: CardSet.dungeon,
     count: 3,
     dragon: true,
     danger: true,
@@ -861,7 +809,6 @@ const List<CardType> baseSetAllCardTypes = [
   ),
   CardType.monster(
     name: 'Watcher',
-    set: CardSet.dungeon,
     count: 3,
     arriveClank: 1,
     gainGold: 3,
@@ -870,7 +817,6 @@ const List<CardType> baseSetAllCardTypes = [
   ),
   CardType.monster(
     name: 'Overlord',
-    set: CardSet.dungeon,
     count: 2,
     arriveClank: 1,
     swordsCost: 2,
@@ -880,7 +826,6 @@ const List<CardType> baseSetAllCardTypes = [
   // Devices
   CardType(
     name: 'Ladder',
-    set: CardSet.dungeon,
     subtype: CardSubType.device,
     count: 2,
     boots: 2,
@@ -888,7 +833,6 @@ const List<CardType> baseSetAllCardTypes = [
   ),
   CardType(
     name: 'The Vault',
-    set: CardSet.dungeon,
     subtype: CardSubType.device,
     location: Location.deep,
     count: 1,
@@ -899,7 +843,6 @@ const List<CardType> baseSetAllCardTypes = [
   ),
   CardType(
     name: 'Teleporter',
-    set: CardSet.dungeon,
     subtype: CardSubType.device,
     count: 2,
     teleports: 1,
@@ -907,7 +850,7 @@ const List<CardType> baseSetAllCardTypes = [
   ),
   // CardType(
   //   name: 'Dragon Shrine',
-  //   set: CardSet.dungeon,
+  //
   //   subtype: CardSubType.device,
   //   count: 2,
   //   danger: true,
@@ -916,7 +859,6 @@ const List<CardType> baseSetAllCardTypes = [
   // ),
   CardType(
     name: 'Shrine',
-    set: CardSet.dungeon,
     subtype: CardSubType.device,
     count: 3,
     arriveReturnDragonCubes: 3,
