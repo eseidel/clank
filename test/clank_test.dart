@@ -599,7 +599,7 @@ void main() {
     player.deck.discardHand();
     executeChoice(game, 1, expectedChoiceCount: 5); // unique types = 5 choices
     game.executeEndOfTurn();
-    expect(player.deck.cardCount, 9);
+    expect(player.deck.cardCount, 6);
   });
 
   test('conditional points effects', () {
