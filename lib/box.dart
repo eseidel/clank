@@ -207,12 +207,14 @@ class Box {
       baseSetAllCardTypes.firstWhere((type) => type.name == name);
 
   List<Card> make(String name, int amount) =>
-      List.generate(amount, (_) => Card._(cardTypeByName(name)));
+      List.generate(amount, (_) => makeOne(name));
 
   List<Card> makeAll(String name) {
     var type = cardTypeByName(name);
     return List.generate(type.count, (_) => Card._(type));
   }
+
+  Card makeOne(String name) => Card._(cardTypeByName(name));
 
   Iterable<Card> makeDungeonDeck() {
     var dungeonTypes =
@@ -271,6 +273,7 @@ class LootToken extends Token {
   LootToken(this.loot);
 
   bool get isArtifact => loot.type == LootType.artifact;
+  bool get isSecret => isMinorSecret || isMajorSecret;
   bool get isMinorSecret => loot.type == LootType.minorSecret;
   bool get isMajorSecret => loot.type == LootType.majorSecret;
   bool get isMonkeyIdol => loot.isMonkeyIdol;
