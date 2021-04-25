@@ -151,6 +151,8 @@ class Turn {
   int swords = 0;
   // Teleport is not immediate, and can be accumulated between cards:
   // https://boardgamegeek.com/thread/1654963/article/23962792#23962792
+  // Treat teleports like a "move resource" rather than a queued action
+  // for simplicity and ensuring teleports always have entry effects, etc.
   int teleports = 0;
   bool _exhausted = false; // Entered a crystal cave.
   bool ignoreExhaustion = false;

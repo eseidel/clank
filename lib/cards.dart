@@ -322,7 +322,9 @@ class SpendGoldForSecretTomes extends ImmediateEffect {
   const SpendGoldForSecretTomes() : super(Condition.have7Gold);
 }
 
-// TODO: This should be PendingEffect instead.
+// This could be a PendingEffect, but there are some benefits with treating
+// teleport as a "resource" for Traverse, as then Teleports flow down all the
+// same code paths as Traverse ensuring entry effects work, etc.
 class Teleport extends Reward {
   const Teleport() : super(teleports: 1);
 }
@@ -887,11 +889,6 @@ const List<CardType> baseSetAllCardTypes = [
     ])),
     skillCost: 3,
   ),
-  // choice: Choice([Teleport(), TakeSecret()])
-  // When executing a card, queues the Choice in the right slot on turn.
-  // ActionGenerator then generates actions based on the Choice, which in turn
-// are then executed by executeAction with sufficient context.
-  //
   CardType(
     name: 'Wand of Wind',
     count: 1,
