@@ -10,33 +10,38 @@ enum LootType {
   special,
 }
 
+enum LootMode {
+  keep,
+  canUse,
+  // Some secrets take action on acquire and immediately discard.
+  // Players have no choice as to when to use them:
+  // https://boardgamegeek.com/thread/1740275/article/25266676#25266676
+  discardImmediately,
+}
+
 class Loot {
   final LootType type;
   final String name;
-  final bool usable;
+  final LootMode mode;
   final int count;
   final int points;
-  final int hearts;
-  // TODO: This is not true!  Fix.
-  // It is detectable that this is "gold" and not "acquireGold" via cards like
-  // "Search" which can increase gold gained in a turn, hence you might wish
-  // to acquire a gold secret but delay using until played same turn as Search.
-  final int gold;
-  final int skill;
-  final int drawCards;
-  final int acquireRage;
   final int boots;
   final int swords;
+  final int hearts;
+  final int acquireGold;
+  final int acquireSkill;
+  final int acquireDrawCards;
+  final int acquireRage;
 
   const Loot.majorSecret({
     required this.name,
     required this.count,
     this.points = 0,
     this.hearts = 0,
-    this.gold = 0,
-    this.usable = false,
-    this.skill = 0,
-    this.drawCards = 0,
+    this.acquireGold = 0,
+    this.mode = LootMode.discardImmediately,
+    this.acquireSkill = 0,
+    this.acquireDrawCards = 0,
   })  : type = LootType.majorSecret,
         boots = 0,
         swords = 0,
@@ -47,10 +52,10 @@ class Loot {
     required this.count,
     this.points = 0,
     this.hearts = 0,
-    this.gold = 0,
-    this.usable = false,
-    this.skill = 0,
-    this.drawCards = 0,
+    this.acquireGold = 0,
+    this.mode = LootMode.discardImmediately,
+    this.acquireSkill = 0,
+    this.acquireDrawCards = 0,
     this.acquireRage = 0,
     this.boots = 0,
     this.swords = 0,
@@ -62,12 +67,12 @@ class Loot {
   })   : type = LootType.artifact,
         count = 1,
         hearts = 0,
-        gold = 0,
-        skill = 0,
-        drawCards = 0,
+        acquireGold = 0,
+        acquireSkill = 0,
+        acquireDrawCards = 0,
         boots = 0,
         swords = 0,
-        usable = false,
+        mode = LootMode.keep,
         acquireRage = 1;
 
   const Loot.market({
@@ -76,12 +81,12 @@ class Loot {
     required this.points,
   })   : type = LootType.market,
         hearts = 0,
-        gold = 0,
-        skill = 0,
-        drawCards = 0,
+        acquireGold = 0,
+        acquireSkill = 0,
+        acquireDrawCards = 0,
         boots = 0,
         swords = 0,
-        usable = false,
+        mode = LootMode.keep,
         acquireRage = 0;
 
   const Loot.special({
@@ -90,12 +95,12 @@ class Loot {
     required this.points,
   })   : type = LootType.special,
         hearts = 0,
-        gold = 0,
-        skill = 0,
-        drawCards = 0,
+        acquireGold = 0,
+        acquireSkill = 0,
+        acquireDrawCards = 0,
         boots = 0,
         swords = 0,
-        usable = false,
+        mode = LootMode.keep,
         acquireRage = 0;
 
   // A bit of a hack.  Crown is the only same-named loot with varying points. :/
@@ -104,33 +109,41 @@ class Loot {
   bool get isMasterKey => name == 'Master Key';
   bool get isBackpack => name == 'Backpack';
 
+  bool get isUsable => mode == LootMode.canUse;
+  bool get discardImmediately => mode == LootMode.discardImmediately;
+
   @override
   String toString() => name;
 }
 
 List<Loot> allLootDescriptions = const [
   // Major Secrets
-  Loot.majorSecret(name: 'Chalice', count: 3, points: 7),
+  Loot.majorSecret(name: 'Chalice', count: 3, points: 7, mode: LootMode.keep),
   Loot.majorSecret(
-      name: 'Potion of Greater Healing', usable: true, count: 2, hearts: 2),
-  Loot.majorSecret(name: 'Greater Treasure', usable: true, count: 2, gold: 5),
-  Loot.majorSecret(
-      name: 'Greater Skill Boost', usable: true, count: 2, skill: 5),
-  Loot.majorSecret(
-      name: 'Flash of Brilliance', usable: true, count: 2, drawCards: 3),
+      name: 'Potion of Greater Healing',
+      mode: LootMode.canUse,
+      count: 2,
+      hearts: 2),
+  Loot.majorSecret(name: 'Greater Treasure', count: 2, acquireGold: 5),
+  Loot.majorSecret(name: 'Greater Skill Boost', count: 2, acquireSkill: 5),
+  Loot.majorSecret(name: 'Flash of Brilliance', count: 2, acquireDrawCards: 3),
 
   // Minor Secrets
-  Loot.minorSecret(name: 'Dragon Egg', count: 3, points: 3, acquireRage: 1),
   Loot.minorSecret(
-      name: 'Potion of Healing', usable: true, count: 3, hearts: 1),
-  Loot.minorSecret(name: 'Treasure', usable: true, count: 3, gold: 2),
-  Loot.minorSecret(name: 'Skill Boost', usable: true, count: 3, skill: 2),
+      name: 'Dragon Egg',
+      count: 3,
+      points: 3,
+      acquireRage: 1,
+      mode: LootMode.keep),
+  Loot.minorSecret(name: 'Treasure', count: 3, acquireGold: 2),
+  Loot.minorSecret(name: 'Skill Boost', count: 3, acquireSkill: 2),
   Loot.minorSecret(
-      name: 'Potion of Strength', usable: true, count: 2, swords: 2),
+      name: 'Potion of Healing', mode: LootMode.canUse, count: 3, hearts: 1),
   Loot.minorSecret(
-      name: 'Potion of Swiftness', usable: true, count: 2, boots: 1),
-  // Don't know how to trash yet.
-  // Loot.minor(name: 'Magic Spring', count: 2, endOfTurnTrash: 1),
+      name: 'Potion of Strength', mode: LootMode.canUse, count: 2, swords: 2),
+  Loot.minorSecret(
+      name: 'Potion of Swiftness', mode: LootMode.canUse, count: 2, boots: 1),
+  // Loot.minorSecret(name: 'Magic Spring', count: 2, endOfTurnTrash: 1),
 
   // Artifacts
   Loot.artifact(name: 'Ring', points: 5),
@@ -151,6 +164,7 @@ List<Loot> allLootDescriptions = const [
   Loot.market(name: 'Crown (9)', count: 1, points: 9),
   Loot.market(name: 'Crown (8)', count: 1, points: 8),
 
+  // These are neither secrets nor artifacts.
   Loot.special(name: 'Mastery Token', count: 4, points: 20),
   Loot.special(name: 'Monkey Idol', count: 3, points: 5),
 ];
@@ -280,6 +294,9 @@ class LootToken extends Token {
   bool get isMasterKey => loot.isMasterKey;
   bool get isBackpack => loot.isBackpack;
   bool get isCrown => loot.isCrown;
+
+  bool get isUsable => loot.isUsable;
+  bool get discardImmediately => loot.discardImmediately;
 
   int get points => loot.points;
 

@@ -536,24 +536,70 @@ void main() {
     expect(game.board.damageTakenBy(player), 9);
     addItemAndUse('Potion of Greater Healing');
     expect(game.board.damageTakenBy(player), 7);
-    addItemAndUse('Greater Treasure');
-    expect(player.gold, 5);
-    addItemAndUse('Greater Skill Boost');
-    expect(turn.skill, 5);
-    addItemAndUse('Flash of Brilliance');
-    expect(player.deck.hand.length, 8);
     addItemAndUse('Potion of Healing');
     expect(game.board.damageTakenBy(player), 6);
-    addItemAndUse('Treasure');
-    expect(player.gold, 7);
-    addItemAndUse('Skill Boost');
-    expect(turn.skill, 7);
     addItemAndUse('Potion of Strength');
     expect(turn.swords, 2);
     addItemAndUse('Potion of Swiftness');
     expect(turn.boots, 1);
     expect(player.loot, isEmpty);
-    expect(game.board.usedItems.length, 9);
+    expect(game.board.usedItems.length, 4);
+  });
+
+  test('discardImmediately items', () {
+    var game = makeGameWithPlayerCount(1);
+    var player = game.activePlayer;
+    var allItems = game.box.makeAllLootTokens();
+    var turn = game.turn;
+    var board = game.board;
+
+    var builder = GraphBuilder();
+    var from = Space.at(0, 0);
+    var to = Space.at(0, 1);
+    builder.connect(from, to);
+    board.graph = Graph(start: from, allSpaces: [from, to]);
+    player.token.moveTo(from);
+
+    void takeItem(String name) {
+      turn.boots += 1;
+      player.token.moveTo(from);
+      var item = allItems.firstWhere((item) => item.loot.name == name);
+      item.moveTo(to);
+      game.executeAction(Traverse(edge: from.edges.first, takeItem: true));
+    }
+
+    expect(turn.skill, 0);
+    expect(player.loot, isEmpty);
+    takeItem('Greater Skill Boost');
+    expect(turn.skill, 5);
+    expect(player.loot, isEmpty);
+
+    takeItem('Skill Boost');
+    expect(turn.skill, 7);
+    expect(player.loot, isEmpty);
+
+    expect(player.gold, 0);
+    takeItem('Greater Treasure');
+    expect(player.gold, 5);
+    expect(player.loot, isEmpty); // Implementing gold as a number, not tokens.
+
+    takeItem('Treasure');
+    expect(player.gold, 7);
+    expect(player.loot, isEmpty); // Implementing gold as a number, not tokens.
+
+    expect(turn.hand.length, 5);
+    takeItem('Flash of Brilliance');
+    expect(turn.hand.length, 8);
+    expect(player.loot, isEmpty);
+
+    // player.deck.hand = fiveUniqueCards(); // replace 8c hand with 5 unique cards
+    // expect(turn.cardTypesInDiscardAndPlayArea.length, 0);
+    // expect(player.deck.cardCount, 7); // 5 unique in hand, only 2 left in draw
+    // takeItem('Magic Spring');
+    // player.deck.discardHand();
+    // executeChoice(game, 0, expectedChoiceCount: 5); // unique types = 5 choices
+    // game.executeEndOfTurn();
+    // expect(player.deck.cardCount, 9);
   });
 
   test('conditional points effects', () {

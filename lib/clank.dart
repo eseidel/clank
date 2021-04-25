@@ -43,7 +43,7 @@ class Player {
     return item;
   }
 
-  Iterable<LootToken> get usableItems => loot.where((loot) => loot.loot.usable);
+  Iterable<LootToken> get usableItems => loot.where((loot) => loot.isUsable);
 
   bool get hasArtifact => loot.any((token) => token.isArtifact);
   bool get hasCrown => loot.any((token) => token.isCrown);
@@ -312,9 +312,13 @@ class ActionExecutor {
   void executeAcquireLoot(LootToken token) {
     Player player = turn.player;
     assert(!token.isArtifact || player.canTakeArtifact);
-    executeAcquireLootEffects(token);
+    executeAcquireLootEffects(token.loot);
     print('$player loots $token');
     player.takeLoot(token);
+    if (token.loot.discardImmediately) {
+      player.loot.remove(token);
+      // Should this get added to Board.usedItems?
+    }
   }
 
   void executeRoomEntryEffects(Traverse action) {
@@ -378,9 +382,16 @@ class ActionExecutor {
     }
   }
 
-  void executeAcquireLootEffects(LootToken token) {
-    if (token.loot.acquireRage != 0) {
-      board.increaseDragonRage(token.loot.acquireRage);
+  void executeAcquireLootEffects(Loot itemType) {
+    if (itemType.acquireRage != 0) {
+      board.increaseDragonRage(itemType.acquireRage);
+    }
+    turn.skill += itemType.acquireSkill;
+    if (itemType.acquireGold != 0) {
+      turn.gainGold(itemType.acquireGold);
+    }
+    if (itemType.acquireDrawCards != 0) {
+      turn.player.deck.drawCards(_random, itemType.acquireDrawCards);
     }
   }
 
@@ -526,25 +537,18 @@ class ActionExecutor {
   }
 
   void executeItemUseEffects(Loot itemType) {
-    assert(itemType.usable);
+    assert(itemType.isUsable);
 
     turn.swords += itemType.swords;
     turn.boots += itemType.boots;
-    turn.skill += itemType.skill;
-    if (itemType.gold != 0) {
-      turn.gainGold(itemType.gold);
-    }
     if (itemType.hearts != 0) {
       board.healDamage(turn.player, itemType.hearts);
-    }
-    if (itemType.drawCards != 0) {
-      turn.player.deck.drawCards(_random, itemType.drawCards);
     }
   }
 
   void executeUseItem(UseItem action) {
     Loot itemType = action.item;
-    assert(itemType.usable);
+    assert(itemType.isUsable);
     var item = turn.player.useItem(itemType);
     board.usedItems.add(item);
     executeItemUseEffects(itemType);

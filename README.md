@@ -14,14 +14,10 @@ dart run bin/simulate.dart
 ## Missing Features
 * Market (including backpacks to carry more)
 * Missing "deep" half of map.
+* Magic Spring minor secret.
 
 ## Issues
 * Most games end w/o escape since random planning just walks around.
-* Some secrets are incorrectly handled:
-https://boardgamegeek.com/thread/1740275/article/25266676#25266676
-* Secret Skill boost is supposed to be immediate (not held onto)
-* Secret Gold gain should be immediate.
-* Secret draw should be immediate.
 
 ## Missing Features/Cards
 
