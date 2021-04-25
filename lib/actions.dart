@@ -9,15 +9,9 @@ class Action {}
 
 class PlayCard extends Action {
   final CardType cardType;
-  late final OrEffect? orEffect;
-  PlayCard(this.cardType, {int? orEffectIndex})
-      : orEffect =
-            orEffectIndex != null ? cardType.orEffects[orEffectIndex] : null {
+  PlayCard(this.cardType) {
     if (cardType.interaction != Interaction.buy) {
       throw ArgumentError('Only buyable cards can be played.');
-    }
-    if (cardType.orEffects.isNotEmpty && orEffect == null) {
-      throw ArgumentError('OrEffect required for cardTypes with orEffects');
     }
   }
 }
@@ -68,27 +62,59 @@ class Fight extends Action {
 
 class UseDevice extends Action {
   final CardType cardType;
-  final OrEffect? orEffect;
 
-  UseDevice({required this.cardType, int? orEffectIndex})
-      : orEffect =
-            orEffectIndex != null ? cardType.orEffects[orEffectIndex] : null {
+  UseDevice({required this.cardType}) {
     assert(cardType.skillCost > 0);
     assert(cardType.swordsCost == 0);
     if (cardType.interaction != Interaction.use) {
       throw ArgumentError('Only device cards can be used.');
     }
-    if (cardType.orEffects.isNotEmpty && orEffect == null) {
-      throw ArgumentError('OrEffect required for cardTypes with orEffects');
-    }
   }
 }
 
-class ReplaceCardInDungeonRow extends Action {
+class Response extends Action {
+  CardType trigger;
+  Response({required this.trigger});
+}
+
+class ReplaceCardInDungeonRow extends Response {
   final CardType cardType;
-  ReplaceCardInDungeonRow(this.cardType) {
+  ReplaceCardInDungeonRow({required CardType trigger, required this.cardType})
+      : super(trigger: trigger) {
     assert(cardType.set == CardSet.dungeon);
   }
+}
+
+class TakeEffect extends Response {
+  final ImmediateEffect effect;
+  TakeEffect({required CardType trigger, required this.effect})
+      : super(trigger: trigger);
+}
+
+class ChooseFrom extends Response {
+  final List<Action> options;
+  ChooseFrom({required CardType trigger, required this.options})
+      : super(trigger: trigger);
+}
+
+class DiscardCard extends Response {
+  final CardType cardType;
+  final Effect effect;
+  DiscardCard(
+      {required CardType trigger, required this.cardType, required this.effect})
+      : super(trigger: trigger);
+}
+
+class TrashACard extends Response {
+  final CardType cardType;
+  TrashACard({required CardType trigger, required this.cardType})
+      : super(trigger: trigger);
+}
+
+class TakeAdjacentSecret extends Response {
+  final Space from;
+  TakeAdjacentSecret({required CardType trigger, required this.from})
+      : super(trigger: trigger);
 }
 
 class EndTurn extends Action {}
@@ -105,14 +131,7 @@ class ActionGenerator {
       // Avoid producing the same type of plays multiple times.
       if (seenTypes.contains(cardType)) continue;
       seenTypes.add(cardType);
-      if (cardType.orEffects.isNotEmpty) {
-        for (int i = 0; i < cardType.orEffects.length; i++) {
-          // Need to check the orEffect is possible!
-          yield PlayCard(cardType, orEffectIndex: i);
-        }
-      } else {
-        yield PlayCard(cardType);
-      }
+      yield PlayCard(cardType);
     }
   }
 
@@ -206,16 +225,45 @@ class ActionGenerator {
     }
   }
 
-  Iterable<Action> possibleQueuedEffects() sync* {
-    for (var action in turn.queuedEffects) {
-      switch (action) {
-        case QueuedEffect.replaceCardInDungeonRow:
-          for (var cardType
-              in uniqueValues(turn.board.dungeonRow.map((card) => card.type))) {
-            yield ReplaceCardInDungeonRow(cardType);
-          }
-          break;
+  Iterable<Action> actionsFromEffect(
+      {required CardType trigger, required Effect effect}) sync* {
+    if (effect is ImmediateEffect) {
+      Condition? condition = effect.condition;
+      if (condition == null || turn.effectConditions.conditionMet(condition)) {
+        yield TakeEffect(trigger: trigger, effect: effect);
       }
+    } else if (effect is ReplaceCardTypeInDungeonRow) {
+      for (var cardType in turn.cardTypesInDungeonRow) {
+        yield ReplaceCardInDungeonRow(trigger: trigger, cardType: cardType);
+      }
+    } else if (effect is DiscardToTrigger) {
+      for (var cardType in turn.cardTypesInHand) {
+        yield DiscardCard(
+            trigger: trigger, cardType: cardType, effect: effect.effect);
+      }
+    } else if (effect is Choice) {
+      // This could also just yield a Choice result with different indicies?
+      for (var option in effect.options) {
+        yield* actionsFromEffect(trigger: trigger, effect: option);
+      }
+    } else if (effect is TakeSecretFromAdjacentRoom) {
+      for (var space
+          in turn.board.adjacentRoomsWithSecrets(turn.player.location)) {
+        yield TakeAdjacentSecret(trigger: trigger, from: space);
+      }
+    } else if (effect is TrashOneCard) {
+      for (var cardType in turn.cardTypesInDiscardAndPlayArea) {
+        yield TrashACard(trigger: trigger, cardType: cardType);
+      }
+    } else {
+      throw UnimplementedError('${effect.runtimeType} not handled');
+    }
+  }
+
+  Iterable<Action> possibleActionsFromPendingActions() sync* {
+    for (PendingAction pending in turn.pendingActions) {
+      yield* actionsFromEffect(
+          trigger: pending.trigger, effect: pending.effect);
     }
   }
 }

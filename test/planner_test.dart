@@ -1,24 +1,9 @@
 import 'package:clank/actions.dart';
-import 'package:clank/box.dart';
-import 'package:clank/clank.dart';
 import 'package:clank/graph.dart';
-import 'package:clank/planner.dart';
 import 'package:test/test.dart';
+import 'common.dart';
 
 void main() {
-  Box box = Box();
-
-  ClankGame makeGameWithPlayerCount(int count) {
-    return ClankGame(
-        planners: List.generate(count, (index) => MockPlanner()), seed: 10);
-  }
-
-  void addAndPlayCard(ClankGame game, String name, {int? orEffectIndex}) {
-    var card = game.box.make(name, 1).first;
-    game.turn.hand.add(card);
-    game.executeAction(PlayCard(card.type, orEffectIndex: orEffectIndex));
-  }
-
   test('consider moves which involve spending health', () {
     var game = makeGameWithPlayerCount(1);
     var board = game.board;
@@ -135,7 +120,7 @@ void main() {
 
     player.deck.hand = box.make('Mister Whiskers', 1);
     plays = generator.possibleCardPlays();
-    expect(plays.length, 2); // Multiple considered plays for OR types.
+    expect(plays.length, 1); // Even Or types have a single play.
 
     // player.deck.hand = box.make('Apothecary', 1);
     // plays = generator.possibleCardPlays();

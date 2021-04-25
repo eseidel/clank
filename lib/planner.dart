@@ -56,7 +56,7 @@ class RandomPlanner implements Planner {
     possible.addAll(generator.possibleMoves());
     possible.addAll(generator.possibleCardAcquisitions());
     possible.addAll(generator.possibleItemUses());
-    possible.addAll(generator.possibleQueuedEffects());
+    possible.addAll(generator.possibleActionsFromPendingActions());
 
     if (possible.isNotEmpty) {
       possible.shuffle(_random);

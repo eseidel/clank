@@ -1,27 +1,10 @@
 import 'package:clank/actions.dart';
-import 'package:clank/box.dart';
-import 'package:clank/cards.dart';
 import 'package:clank/clank.dart';
 import 'package:clank/graph.dart';
-import 'package:clank/planner.dart';
 import 'package:test/test.dart';
+import 'common.dart';
 
 void main() {
-  Box box = Box();
-
-  ClankGame makeGameWithPlayerCount(int count) {
-    return ClankGame(
-        planners: List.generate(count, (index) => MockPlanner()), seed: 10);
-  }
-
-  CardType cardType(String name) => box.cardTypeByName(name);
-
-  void addAndPlayCard(ClankGame game, String name, {int? orEffectIndex}) {
-    var card = game.box.make(name, 1).first;
-    game.turn.hand.add(card);
-    game.executeAction(PlayCard(card.type, orEffectIndex: orEffectIndex));
-  }
-
   test('conditional points dwarven peddler', () {
     var game = makeGameWithPlayerCount(1);
     var player = game.activePlayer;
@@ -212,9 +195,10 @@ void main() {
     addAndPlayCard(game, 'Treasure Hunter');
     expect(turn.skill, 2);
     expect(turn.swords, 2);
-    expect(turn.queuedEffects.length, 1);
+    expect(turn.pendingActions.length, 1);
     // Cards with complex actions are split into two.
-    var possibleActions = ActionGenerator(turn).possibleQueuedEffects();
+    var possibleActions =
+        ActionGenerator(turn).possibleActionsFromPendingActions();
     expect(possibleActions.length, 6); // One per card (no duplicates);
     game.executeAction(possibleActions.first);
     expect(board.dungeonDiscard.length, 1);
@@ -227,8 +211,10 @@ void main() {
     var board = game.board;
     var turn = game.turn;
     board.dungeonDeck = game.box.make('Watcher', 1);
+
     addAndPlayCard(game, 'Treasure Hunter');
-    var possibleActions = ActionGenerator(turn).possibleQueuedEffects();
+    var possibleActions =
+        ActionGenerator(turn).possibleActionsFromPendingActions();
     game.executeAction(possibleActions.first);
     expect(board.clankArea.totalPlayerCubes, 1); // Arrival clank triggers.
   });
@@ -276,15 +262,14 @@ void main() {
     var player = game.activePlayer;
 
     var underWorldDealing = cardType('Underworld Dealing');
-    addAndPlayCard(game, underWorldDealing.name, orEffectIndex: 0);
+    addAndPlayCard(game, underWorldDealing.name);
+    // Not allowed to play the second effect w/o the gold for it.
+    executeChoice(game, 0, expectedChoiceCount: 1); // only one choice.
     expect(player.gold, 1);
 
-    // Not allowed to play the second effect w/o the gold for it.
-    expect(() => addAndPlayCard(game, underWorldDealing.name, orEffectIndex: 1),
-        throwsArgumentError);
-
     player.gold = 7;
-    addAndPlayCard(game, underWorldDealing.name, orEffectIndex: 1);
+    addAndPlayCard(game, underWorldDealing.name);
+    executeChoice(game, 1, expectedChoiceCount: 2);
     expect(player.gold, 0);
     expect(player.deck.discardPile.length, 2);
   });
@@ -296,7 +281,8 @@ void main() {
     var turn = game.turn;
 
     var wandOfWind = cardType('Wand of Wind');
-    addAndPlayCard(game, wandOfWind.name, orEffectIndex: 0);
+    addAndPlayCard(game, wandOfWind.name);
+    executeChoice(game, 0, expectedChoiceCount: 1); // No secret to take.
     expect(turn.teleports, 1);
 
     var builder = GraphBuilder();
@@ -304,12 +290,13 @@ void main() {
     var to = Space.at(0, 1, special: Special.majorSecret);
     var secret =
         game.box.makeAllLootTokens().firstWhere((loot) => loot.isMajorSecret);
-    to.tokens.add(secret);
+    secret.moveTo(to);
     builder.connect(from, to, monsters: 2);
     board.graph = Graph(start: from, allSpaces: [from, to]);
     player.token.moveTo(from);
 
-    addAndPlayCard(game, wandOfWind.name, orEffectIndex: 1);
+    addAndPlayCard(game, wandOfWind.name);
+    executeChoice(game, 1, expectedChoiceCount: 2);
     expect(player.loot.length, 1);
 
     // Artifacts are not secrets and can't be grabbed.
@@ -317,14 +304,16 @@ void main() {
     to = Space.at(0, 1, special: Special.majorSecret);
     var artifact =
         game.box.makeAllLootTokens().firstWhere((loot) => loot.isArtifact);
-    to.tokens.add(artifact);
+    artifact.moveTo(to);
     builder.connect(from, to, monsters: 2);
     board.graph = Graph(start: from, allSpaces: [from, to]);
     player.token.moveTo(from);
 
-    expect(() => addAndPlayCard(game, wandOfWind.name, orEffectIndex: 1),
-        throwsArgumentError);
-  }, skip: 'Unimplemented');
+    addAndPlayCard(game, wandOfWind.name);
+    var possibleActions =
+        ActionGenerator(turn).possibleActionsFromPendingActions().toList();
+    expect(possibleActions.length, 1); // Take is not an option.
+  });
 
   test('Shrine use effects', () {
     var game = makeGameWithPlayerCount(1);
@@ -335,12 +324,14 @@ void main() {
     var shrine = cardType('Shrine');
     board.dungeonRow = box.make('Shrine', 2);
     turn.skill = 2;
-    game.executeAction(UseDevice(cardType: shrine, orEffectIndex: 0));
+    game.executeAction(UseDevice(cardType: shrine));
+    executeChoice(game, 0, expectedChoiceCount: 2);
     expect(player.gold, 1);
 
     board.takeDamage(player, 2);
     turn.skill = 2;
-    game.executeAction(UseDevice(cardType: shrine, orEffectIndex: 1));
+    game.executeAction(UseDevice(cardType: shrine));
+    executeChoice(game, 1, expectedChoiceCount: 2);
     expect(board.damageTakenBy(player), 1);
   });
 
@@ -354,13 +345,15 @@ void main() {
     expect(board.clankArea.totalPlayerCubes, 2);
     expect(board.dragonBag.totalCubes, 24);
     expect(board.cubeCountForNormalDragonAttack(), 3);
-    addAndPlayCard(game, mrWhiskers.name, orEffectIndex: 0);
+    addAndPlayCard(game, mrWhiskers.name);
+    executeChoice(game, 0, expectedChoiceCount: 2);
     expect(board.dragonBag.totalCubes, 23); // 24 + 2 - 3 = 23
     expect(board.clankArea.totalPlayerCubes, 0);
     // Might have might have taken damage depending on random.
 
     expect(turn.leftoverClankReduction, 0);
-    addAndPlayCard(game, mrWhiskers.name, orEffectIndex: 1);
+    addAndPlayCard(game, mrWhiskers.name);
+    executeChoice(game, 1, expectedChoiceCount: 2);
     expect(turn.leftoverClankReduction, -2);
   });
 
@@ -372,22 +365,25 @@ void main() {
 
     var dragonShrine = cardType('Dragon Shrine');
     expect(board.cubeCountForNormalDragonAttack(), 3);
-    board.dungeonRow = box.make('Dragon Shrine', 2);
+    board.dungeonRow = box.make(dragonShrine.name, 2);
     expect(board.cubeCountForNormalDragonAttack(), 5); // +1 danger from each
     turn.skill = 4;
-    game.executeAction(UseDevice(cardType: dragonShrine, orEffectIndex: 0));
+    game.executeAction(UseDevice(cardType: dragonShrine));
+    executeChoice(game, 0, expectedChoiceCount: 1); // Nothing to trash
     expect(player.gold, 2);
     expect(board.cubeCountForNormalDragonAttack(), 4);
     expect(board.dungeonDiscard.length, 1);
 
+    player.deck.hand = []; // Removed 5 cards.
+    player.deck.discardPile = fiveUniqueCards();
+    expect(player.deck.cardCount, 10); // 10 still.
     turn.skill = 4;
-    game.executeAction(UseDevice(cardType: dragonShrine, orEffectIndex: 1));
+    game.executeAction(UseDevice(cardType: dragonShrine));
+    executeChoice(game, 1, expectedChoiceCount: 6); // 2g or 5 different trashes
     expect(player.deck.cardCount, 10); // 10 starter cards.
-    player.deck.discardPile.addAll(player.deck.hand);
-    player.deck.hand = [];
     game.executeEndOfTurn();
     expect(player.deck.cardCount, 9); // One card gone
-  }, skip: 'Dragon Shrine unimplemented');
+  });
 
   test('Apothecary', () {
     var game = makeGameWithPlayerCount(2);
@@ -395,22 +391,64 @@ void main() {
     var player = game.activePlayer;
     var turn = game.turn;
 
+    player.deck.hand = fiveUniqueCards();
+
     var apothecary = cardType('Apothecary');
     // 1 discard -> 3 swords
-    addAndPlayCard(game, apothecary.name, orEffectIndex: 0);
+    addAndPlayCard(game, apothecary.name);
+    executeChoice(game, 0, expectedChoiceCount: 5);
+    executeChoice(game, 0, expectedChoiceCount: 3);
     expect(turn.swords, 3);
     expect(player.deck.hand.length, 4);
     expect(player.deck.discardPile.length, 1);
+
     // 1 discard -> 2 gold
-    addAndPlayCard(game, apothecary.name, orEffectIndex: 1);
+    addAndPlayCard(game, apothecary.name);
+    executeChoice(game, 0, expectedChoiceCount: 4);
+    executeChoice(game, 1, expectedChoiceCount: 3);
+
     expect(player.gold, 2);
     expect(player.deck.hand.length, 3);
     expect(player.deck.discardPile.length, 2);
+
     // 1 discard -> 1 heart
     board.takeDamage(player, 2);
-    addAndPlayCard(game, apothecary.name, orEffectIndex: 2);
-    expect(board.damageTakenBy(player), 9);
+    addAndPlayCard(game, apothecary.name);
+    executeChoice(game, 0, expectedChoiceCount: 3);
+    executeChoice(game, 2, expectedChoiceCount: 3);
+
+    expect(board.damageTakenBy(player), 1);
     expect(player.deck.hand.length, 2);
     expect(player.deck.discardPile.length, 3);
-  }, skip: 'Apothecary unimplemented');
+  });
+
+  test('Sleight of Hand', () {
+    var game = makeGameWithPlayerCount(2);
+    var player = game.activePlayer;
+    var turn = game.turn;
+
+    player.deck.hand = fiveUniqueCards();
+
+    var sleightOfHand = cardType('Sleight of Hand');
+    // 1 discard -> 2 cards
+    addAndPlayCard(game, sleightOfHand.name);
+    // Cards with complex actions are split into two.
+    var possibleActions =
+        ActionGenerator(turn).possibleActionsFromPendingActions();
+    expect(possibleActions.length, 5); // One per card type in hand (no dupes)
+    game.executeAction(possibleActions.first);
+    expect(possibleActions.length, 0);
+    expect(player.deck.hand.length, 6);
+    expect(player.deck.discardPile.length, 1);
+
+    // no discard, no draw
+    player.deck.hand = [];
+    addAndPlayCard(game, sleightOfHand.name);
+    possibleActions = ActionGenerator(turn).possibleActionsFromPendingActions();
+    expect(possibleActions.length, 0);
+
+    expect(game.possiblePendingActionCount(), 0);
+    // No asserts when ending turn.
+    expect(() => game.executeEndOfTurn(), returnsNormally);
+  });
 }

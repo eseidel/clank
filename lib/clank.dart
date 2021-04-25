@@ -92,18 +92,15 @@ class Player {
 
   // There must be a shorter way to write this?
   void trashCardOfType(CardType cardType) {
-    for (var card in deck.playArea) {
-      if (card.type == cardType) {
-        deck.playArea.remove(card);
-        return;
-      }
-    }
-    for (var card in deck.discardPile) {
-      if (card.type == cardType) {
-        deck.discardPile.remove(card);
-        return;
-      }
-    }
+    bool removed =
+        deck.playArea.removeFirstWhere((card) => card.type == cardType);
+    if (removed) return;
+    removed =
+        deck.discardPile.removeFirstWhere((card) => card.type == cardType);
+    if (removed) return;
+    throw ArgumentError(
+        'Cannot trash cardType $cardType not found in discard or play area.');
+    // TODO: Should this go into a trash pile?
   }
 
   bool hasLoot(Loot lootType) {
@@ -137,6 +134,12 @@ class Player {
   String toString() => '${colorToString(color)}';
 }
 
+class PendingAction {
+  final CardType trigger;
+  final PendingEffect effect;
+  PendingAction(this.trigger, this.effect);
+}
+
 // Responsible for storing per-turn data as well as helpers for
 // executing a turn.  This is the only place where both Player and Board
 // are accessible at the same time.
@@ -160,7 +163,7 @@ class Turn {
 
   // Actions from cards which don't have to happen immediately, but must
   // happen by end of turn.
-  List<QueuedEffect> queuedEffects = [];
+  List<PendingAction> pendingActions = [];
 
   // Actions which happen as result of end of turn (e.g. trashing)
   List<EndOfTurnEffect> endOfTurnEffects = [];
@@ -184,6 +187,18 @@ class Turn {
       return cardType.skillCost - 2;
     }
     return cardType.skillCost;
+  }
+
+  Iterable<CardType> get cardTypesInDungeonRow =>
+      uniqueValues(board.dungeonRow.map((card) => card.type));
+
+  Iterable<CardType> get cardTypesInHand =>
+      uniqueValues(hand.map((card) => card.type));
+
+  Iterable<CardType> get cardTypesInDiscardAndPlayArea {
+    return uniqueValues(player.deck.discardPile
+        .followedBy(player.deck.playArea)
+        .map((card) => card.type));
   }
 
   // Does this belong on board instead?
@@ -214,6 +229,25 @@ class Turn {
   int hpAvailableForMonsterTraversals() {
     // We can't spend more cubes than we have or available health points.
     return min(board.stashCountFor(player), board.healthFor(player) - 1);
+  }
+
+  void queuePendingAction(PendingAction action) {
+    pendingActions.add(action);
+  }
+
+  void removePendingActionFor(Response action) {
+    // Two-level triggers are not possible, so this check should be enough.
+    // e.g. can't have two of same card at different levels in a decision tree.
+    pendingActions
+        .removeFirstWhere((pending) => pending.trigger == action.trigger);
+  }
+
+  EffectConditions get effectConditions {
+    return EffectConditions(
+        adjacentSecretExists: board.adjacentSecretExists(player.location),
+        dungeonRowNotEmpty: board.dungeonRow.isNotEmpty,
+        handNotEmpty: hand.isNotEmpty,
+        have7Gold: player.gold >= 7);
   }
 
   @override
@@ -253,14 +287,10 @@ class ActionExecutor {
   final Random _random;
   final ClankGame game;
 
-  // TODO: Remove all these?
-  final Box box;
-
   ActionExecutor(
       {required this.turn, required Random random, required this.game})
       : board = turn.board,
-        _random = random,
-        box = game.box;
+        _random = random;
 
   void executeAcquireLoot(LootToken token) {
     Player player = turn.player;
@@ -278,7 +308,7 @@ class ActionExecutor {
     if (action.edge.end == board.graph.start) {
       assert(turn.player.hasArtifact);
       // A bit of a hack to construct a Mastery Token manually.
-      player.loot.add(LootToken(box.lootByName('Mastery Token')));
+      player.loot.add(LootToken(game.box.lootByName('Mastery Token')));
     }
 
     // Entering a crystal marks you as exhausted even if you teleport in/out
@@ -361,63 +391,73 @@ class ActionExecutor {
     if (!card.type.neverDiscards) {
       board.dungeonDiscard.add(card);
     }
-    executeCardUseEffects(action.cardType, orEffect: null);
+    executeCardUseEffects(action.cardType);
     print('${turn.player} fought $card');
   }
 
   EndOfTurnEffect createEndOfTurnEffect(EndOfTurn effect) {
     switch (effect) {
       case EndOfTurn.trashPlayedBurgle:
-        return TrashCard(box.cardTypeByName('Burgle'));
+        return TrashCard(game.box.cardTypeByName('Burgle'));
     }
   }
 
-  void executeOrSpecial(OrSpecial special) {
-    switch (special) {
-      case OrSpecial.dragonAttack:
-        board.dragonAttack(_random);
-        break;
-      case OrSpecial.spendSevenGoldForTwoSecretTomes:
-        if (turn.player.gold < 7) {
-          throw ArgumentError('7 gold required.');
-        }
-        turn.player.gold -= 7;
-        var secretTome = box.cardTypeByName('Secret Tome');
-        var cards = [
-          board.reserve.takeCard(secretTome),
-          board.reserve.takeCard(secretTome)
-        ];
-        turn.player.deck.discardPile.addAll(cards);
-        break;
-      case OrSpecial.takeSecretFromAdjacentRoom:
-        // TODO: Implement.
-        break;
-      case OrSpecial.teleport:
-        turn.teleports += 1;
-        break;
-      case OrSpecial.trashACard:
-        // TODO: Implement.
-        break;
+  void executeImmediateEffect(ImmediateEffect effect) {
+    if (effect is Reward) {
+      executeRewardEffect(effect);
+      return;
+    }
+    if (effect is DragonAttack) {
+      board.dragonAttack(_random);
+      return;
+    }
+    if (effect is SpendGoldForSecretTomes) {
+      if (turn.player.gold < 7) {
+        throw ArgumentError('7 gold required.');
+      }
+      turn.player.gold -= 7;
+      var secretTome = game.box.cardTypeByName('Secret Tome');
+      var cards = [
+        board.reserve.takeCard(secretTome),
+        board.reserve.takeCard(secretTome)
+      ];
+      turn.player.deck.discardPile.addAll(cards);
+      return;
+    }
+    throw UnimplementedError('$effect');
+  }
+
+  void executeRewardEffect(Reward effect) {
+    turn.player.gold += effect.gold;
+    turn.teleports += effect.teleports; // Remove.
+    if (effect.hearts != 0) {
+      board.healDamage(turn.player, effect.hearts);
+    }
+    turn.swords += effect.swords;
+    if (effect.clank != 0) {
+      turn.adjustActivePlayerClank(effect.clank);
+    }
+    if (effect.drawCards != 0) {
+      turn.player.deck.drawCards(_random, effect.drawCards);
     }
   }
 
-  void executeOrEffect(OrEffect orEffect) {
-    turn.player.gold += orEffect.gainGold;
-    if (orEffect.hearts != 0) {
-      board.healDamage(turn.player, orEffect.hearts);
+  void handleQueuedEffect(CardType trigger, Effect effect) {
+    if (effect is PendingEffect) {
+      turn.queuePendingAction(PendingAction(trigger, effect));
+      return;
     }
-    turn.swords += orEffect.swords;
-    if (orEffect.clank != 0) {
-      turn.adjustActivePlayerClank(orEffect.clank);
+    if (effect is ImmediateEffect) {
+      if (effect is Reward) {
+        executeRewardEffect(effect);
+        return;
+      }
     }
-    OrSpecial? special = orEffect.special;
-    if (special != null) {
-      executeOrSpecial(special);
-    }
+    throw UnimplementedError('$effect');
   }
 
   // Used by both PlayCard and Fight.
-  void executeCardUseEffects(CardType cardType, {required OrEffect? orEffect}) {
+  void executeCardUseEffects(CardType cardType) {
     assert(cardUsableAtLocation(cardType, turn.player.location));
     turn.addTurnResourcesFromCard(cardType);
     if (cardType.clank != 0) {
@@ -443,7 +483,7 @@ class ActionExecutor {
     }
 
     if (cardType.queuedEffect != null) {
-      turn.queuedEffects.add(cardType.queuedEffect!);
+      handleQueuedEffect(cardType, cardType.queuedEffect!);
     }
     if (cardType.endOfTurn != null) {
       turn.endOfTurnEffects.add(createEndOfTurnEffect(cardType.endOfTurn!));
@@ -451,10 +491,6 @@ class ActionExecutor {
 
     if (cardType.specialEffect == SpecialEffect.gemTwoSkillDiscount) {
       turn.gemTwoSkillDiscount = true;
-    }
-
-    if (orEffect != null) {
-      executeOrEffect(orEffect);
     }
   }
 
@@ -467,7 +503,7 @@ class ActionExecutor {
 
     Card card = board.takeCard(cardType);
     board.dungeonDiscard.add(card);
-    executeCardUseEffects(cardType, orEffect: action.orEffect);
+    executeCardUseEffects(cardType);
     print('${turn.player} uses device $card');
   }
 
@@ -497,12 +533,13 @@ class ActionExecutor {
   }
 
   void executeAction(Action action) {
-    if (action is PlayCard) {
-      turn.player.deck.playCard(action.cardType);
-      executeCardUseEffects(action.cardType, orEffect: action.orEffect);
+    if (action is EndTurn) {
       return;
     }
-    if (action is EndTurn) {
+    // Actions:
+    if (action is PlayCard) {
+      turn.player.deck.playCard(action.cardType);
+      executeCardUseEffects(action.cardType);
       return;
     }
     if (action is Traverse) {
@@ -525,14 +562,39 @@ class ActionExecutor {
       executeUseItem(action);
       return;
     }
-    // Should this really be its own action subclass?
-    if (action is ReplaceCardInDungeonRow) {
-      var triggers =
-          board.replaceCardInDungeonRowIgnoringDragon(action.cardType);
-      game.executeArrivalTriggers(triggers);
-      return;
+
+    // Responses:
+    if (action is Response) {
+      assert(turn.pendingActions.isNotEmpty);
+      turn.removePendingActionFor(action);
+      if (action is ReplaceCardInDungeonRow) {
+        var triggers =
+            board.replaceCardInDungeonRowIgnoringDragon(action.cardType);
+        game.executeArrivalTriggers(triggers);
+        return;
+      }
+      if (action is DiscardCard) {
+        turn.player.deck.discardCardOfType(action.cardType);
+        handleQueuedEffect(action.trigger, action.effect);
+        return;
+      }
+      if (action is TrashACard) {
+        turn.endOfTurnEffects.add(TrashCard(action.cardType));
+        return;
+      }
+      if (action is TakeEffect) {
+        executeImmediateEffect(action.effect);
+        return;
+      }
+      if (action is TakeAdjacentSecret) {
+        Space from = action.from;
+        assert(from.isAdjacentTo(turn.player.location));
+        assert(from.secrets.isNotEmpty);
+        executeAcquireLoot(from.secrets.first);
+        return;
+      }
     }
-    assert(false);
+    assert(false, 'executeAction case ${action.runtimeType} not handled');
   }
 }
 
@@ -615,8 +677,7 @@ class ClankGame {
     return changedStatus;
   }
 
-  void applyTriggeredEffect(Effect effect) {
-    assert(effect.triggered);
+  void applyTriggeredEffect(Reward effect) {
     turn.skill += effect.skill;
     turn.boots += effect.boots;
     turn.swords += effect.swords;
@@ -637,9 +698,8 @@ class ClankGame {
       return;
     }
     // If the player is otherwise off board (dead, out), ignore the turn.
-    if (activePlayer.status != PlayerStatus.inGame) {
-      return;
-    }
+    if (!activePlayer.inGame) return;
+
     Action action;
     ActionExecutor executor =
         ActionExecutor(turn: turn, game: this, random: _random);
@@ -672,16 +732,16 @@ class ClankGame {
     var player = turn.player;
     // This is a bit of an abuse of removeWhere.
     turn.unresolvedTriggers.removeWhere((trigger) {
-      Effect effect = trigger(EffectTriggers(
+      TriggerResult result = trigger(EffectTriggers(
         haveArtifact: player.hasArtifact,
         haveCrown: player.hasCrown,
         haveMonkeyIdol: player.hasMonkeyIdol,
         twoCompanionsInPlayArea: player.companionsInPlayArea > 1,
       ));
-      if (effect.triggered) {
-        applyTriggeredEffect(effect);
+      if (result.triggered) {
+        applyTriggeredEffect(result.effect);
       }
-      return effect.triggered;
+      return result.triggered;
     });
   }
 
@@ -691,13 +751,28 @@ class ClankGame {
     }
   }
 
+  int possiblePendingActionCount() {
+    EffectConditions conditions = turn.effectConditions;
+    bool isPossible(PendingAction action) {
+      Condition? condition = action.effect.condition;
+      return condition == null || conditions.conditionMet(condition);
+    }
+
+    int countForAction(PendingAction action) {
+      return isPossible(action) ? 1 : 0;
+    }
+
+    return turn.pendingActions
+        .fold(0, (sum, action) => sum + countForAction(action));
+  }
+
   void executeEndOfTurn() {
+    assert(turn.teleports == 0, 'Must use all teleports.');
+    assert(
+        possiblePendingActionCount() == 0, 'Must resolve all pending actions.');
     // You must play all cards
     assert(turn.hand.isEmpty);
     activePlayer.deck.discardPlayAreaAndDrawNewHand(_random);
-
-    assert(turn.teleports == 0, 'Must use all teleports.');
-    assert(turn.queuedEffects.isEmpty, 'Must use all queued effects.');
     executeEndOfTurnEffects();
 
     // Refill the dungeon row
@@ -868,6 +943,16 @@ extension Pile<T> on List<T> {
     List<T> taken = take(actual).toList();
     removeRange(0, actual);
     return taken;
+  }
+
+  bool removeFirstWhere(bool Function(T) test) {
+    for (var element in this) {
+      if (test(element)) {
+        remove(element);
+        return true;
+      }
+    }
+    return false;
   }
 }
 
@@ -1079,6 +1164,15 @@ class Board {
     dungeonRow.remove(card);
     return card;
   }
+
+  Iterable<Space> adjacentRoomsWithSecrets(Space space) {
+    return space.edges
+        .map((edge) => edge.end)
+        .where((end) => end.loot.any((loot) => loot.isSecret));
+  }
+
+  bool adjacentSecretExists(Space space) =>
+      adjacentRoomsWithSecrets(space).isNotEmpty;
 }
 
 class PlayerDeck {
@@ -1095,13 +1189,11 @@ class PlayerDeck {
     discardPile = cards ?? <Card>[];
   }
 
-  List<Card> get allCards {
-    List<Card> allCards = [];
-    allCards.addAll(drawPile);
-    allCards.addAll(hand);
-    allCards.addAll(discardPile);
-    allCards.addAll(playArea);
-    return allCards;
+  Iterable<Card> get allCards {
+    return drawPile
+        .followedBy(hand)
+        .followedBy(discardPile)
+        .followedBy(playArea);
   }
 
   int get cardCount => allCards.length;
@@ -1141,6 +1233,18 @@ class PlayerDeck {
     discardPile.addAll(playArea);
     playArea = [];
     return drawCards(random, count);
+  }
+
+  void discardCardOfType(CardType cardType) {
+    Card toDiscard = hand.firstWhere((card) => card.type == cardType);
+    hand.remove(toDiscard);
+    discardPile.add(toDiscard);
+  }
+
+  // Only exposed for testing
+  void discardHand() {
+    discardPile.addAll(hand);
+    hand = [];
   }
 
   int calculateTotalPoints(PointsConditions conditions) {

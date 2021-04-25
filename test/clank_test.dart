@@ -1,26 +1,12 @@
 import 'dart:math';
 
 import 'package:clank/actions.dart';
-import 'package:clank/box.dart';
 import 'package:clank/clank.dart';
 import 'package:clank/graph.dart';
-import 'package:clank/planner.dart';
 import 'package:test/test.dart';
+import 'common.dart';
 
 void main() {
-  Box box = Box();
-
-  ClankGame makeGameWithPlayerCount(int count) {
-    return ClankGame(
-        planners: List.generate(count, (index) => MockPlanner()), seed: 10);
-  }
-
-  void addAndPlayCard(ClankGame game, String name, {int? orEffectIndex}) {
-    var card = game.box.make(name, 1).first;
-    game.turn.hand.add(card);
-    game.executeAction(PlayCard(card.type, orEffectIndex: orEffectIndex));
-  }
-
   test('deck shuffles when empty', () {
     PlayerDeck deck = PlayerDeck();
     expect(deck.cardCount, 0);
@@ -250,8 +236,11 @@ void main() {
 
   test('dragon attack rage cube count', () {
     var twoPlayer = makeGameWithPlayerCount(2);
+    twoPlayer.board.dungeonRow = []; // Remove any danger cards.
     var threePlayer = makeGameWithPlayerCount(3);
+    threePlayer.board.dungeonRow = []; // Remove any danger cards.
     var fourPlayer = makeGameWithPlayerCount(4);
+    fourPlayer.board.dungeonRow = []; // Remove any danger cards.
 
     expect(twoPlayer.board.cubeCountForNormalDragonAttack(), 3);
     expect(threePlayer.board.cubeCountForNormalDragonAttack(), 2);

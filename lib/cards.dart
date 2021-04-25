@@ -32,28 +32,6 @@ enum SpecialEffect {
   gemTwoSkillDiscount,
 }
 
-enum OrSpecial {
-  trashACard,
-  dragonAttack,
-  spendSevenGoldForTwoSecretTomes,
-  takeSecretFromAdjacentRoom,
-  teleport,
-}
-
-class OrEffect {
-  final int gainGold;
-  final int hearts;
-  final int swords;
-  final int clank;
-  final OrSpecial? special;
-  const OrEffect(
-      {this.gainGold = 0,
-      this.hearts = 0,
-      this.swords = 0,
-      this.clank = 0,
-      this.special});
-}
-
 class CardType {
   final String name;
   final CardSet set;
@@ -92,12 +70,11 @@ class CardType {
   final bool ignoreMonsters;
 
   final SpecialEffect specialEffect;
-  final QueuedEffect? queuedEffect;
+  final Effect? queuedEffect;
   final EndOfTurn? endOfTurn;
   final ConditionalPoints? pointsCondition;
   final TriggerEffects? triggers;
   final CardSubType subtype;
-  final List<OrEffect> orEffects;
 
   final bool neverDiscards; // Special just for Goblin.
 
@@ -131,7 +108,6 @@ class CardType {
     this.endOfTurn,
     this.pointsCondition,
     this.triggers,
-    this.orEffects = const [],
     this.subtype = CardSubType.none,
   })  : swordsCost = 0,
         neverDiscards = false,
@@ -179,14 +155,53 @@ class CardType {
         ignoreExhaustion = false,
         ignoreMonsters = false,
         pointsCondition = null,
-        orEffects = const [],
         specialEffect = SpecialEffect.none,
         endOfTurn = null,
         queuedEffect = null,
         triggers = null,
         assert(skill >= 0),
         assert(boots >= 0),
-        assert(swordsCost >= 0),
+        assert(swordsCost > 0),
+        assert(arriveClank >= 0),
+        assert(gainGold >= 0);
+
+  // TODO: Remove extra unused arguments.
+  const CardType.device({
+    required this.name,
+    required this.count,
+    required this.skillCost,
+    this.set = CardSet.dungeon,
+    this.skill = 0,
+    this.boots = 0,
+    this.clank = 0,
+    this.dragon = false,
+    this.arriveClank = 0,
+    this.arriveReturnDragonCubes = 0,
+    this.danger = false,
+    this.location = Location.everywhere,
+    this.drawCards = 0,
+    this.gainGold = 0,
+    this.teleports = 0,
+    this.othersClank = 0,
+    this.neverDiscards = false,
+    this.queuedEffect,
+  })  : subtype = CardSubType.device,
+        swordsCost = 0,
+        points = 0,
+        swords = 0,
+        acquireClank = 0,
+        acquireSwords = 0,
+        acquireHearts = 0,
+        acquireBoots = 0,
+        ignoreExhaustion = false,
+        ignoreMonsters = false,
+        pointsCondition = null,
+        specialEffect = SpecialEffect.none,
+        endOfTurn = null,
+        triggers = null,
+        assert(skill >= 0),
+        assert(boots >= 0),
+        assert(skillCost > 0),
         assert(arriveClank >= 0),
         assert(gainGold >= 0);
 
@@ -205,8 +220,19 @@ class CardType {
   String toString() => name;
 }
 
-enum QueuedEffect {
-  replaceCardInDungeonRow,
+class Effect {
+  final Condition? condition;
+  const Effect({this.condition});
+}
+
+// Multi-choice effect?
+class PendingEffect extends Effect {
+  const PendingEffect([Condition? condition]) : super(condition: condition);
+}
+
+// No choice effect?
+class ImmediateEffect extends Effect {
+  const ImmediateEffect([Condition? condition]) : super(condition: condition);
 }
 
 enum EndOfTurn {
@@ -215,29 +241,120 @@ enum EndOfTurn {
   // discardToDrawTwo, // Not actually delayed?
 }
 
+enum Condition {
+  dungeonRowNotEmpty,
+  have7Gold,
+  adjacentSecretExists,
+  handNotEmpty,
+}
+
+class EffectConditions {
+  final bool dungeonRowNotEmpty;
+  final bool have7Gold;
+  final bool adjacentSecretExists;
+  final bool handNotEmpty;
+
+  EffectConditions(
+      {required this.adjacentSecretExists,
+      required this.dungeonRowNotEmpty,
+      required this.handNotEmpty,
+      required this.have7Gold});
+
+  bool conditionMet(Condition condition) {
+    switch (condition) {
+      case Condition.adjacentSecretExists:
+        return adjacentSecretExists;
+      case Condition.dungeonRowNotEmpty:
+        return dungeonRowNotEmpty;
+      case Condition.handNotEmpty:
+        return handNotEmpty;
+      case Condition.have7Gold:
+        return have7Gold;
+    }
+  }
+}
+
+class Choice extends PendingEffect {
+  final List<Effect> options;
+  const Choice(this.options);
+}
+
+class DragonAttack extends ImmediateEffect {
+  const DragonAttack();
+}
+
+class SpendGoldForSecretTomes extends ImmediateEffect {
+  const SpendGoldForSecretTomes() : super(Condition.have7Gold);
+}
+
+// TODO: This should be PendingEffect instead.
+class Teleport extends Reward {
+  const Teleport() : super(teleports: 1);
+}
+
+class TrashOneCard extends PendingEffect {
+  final CardType? cardType;
+  const TrashOneCard([this.cardType]);
+}
+
+class DiscardToTrigger extends PendingEffect {
+  final Effect effect;
+  const DiscardToTrigger(this.effect) : super(Condition.handNotEmpty);
+}
+
+class ReplaceCardTypeInDungeonRow extends PendingEffect {
+  const ReplaceCardTypeInDungeonRow() : super(Condition.dungeonRowNotEmpty);
+}
+
+class TakeSecretFromAdjacentRoom extends PendingEffect {
+  const TakeSecretFromAdjacentRoom() : super(Condition.adjacentSecretExists);
+}
+
 // Maybe this should be shared with Loot and CardType somehow?
-class Effect {
-  final bool triggered;
+class Reward extends ImmediateEffect {
   final int swords;
   final int skill;
   final int boots;
   final int drawCards;
   final int gold;
   final int hearts;
+  final int clank;
   final int teleports;
-  Effect({
-    required this.triggered,
+  const Reward({
     this.boots = 0,
     this.drawCards = 0,
     this.gold = 0,
     this.hearts = 0,
     this.skill = 0,
     this.swords = 0,
+    this.clank = 0,
     this.teleports = 0,
   });
 }
 
-typedef TriggerEffects = Effect Function(EffectTriggers triggers);
+class TriggerResult {
+  final bool triggered;
+  final Reward effect;
+  TriggerResult(
+      {required this.triggered,
+      int boots = 0,
+      int drawCards = 0,
+      int gold = 0,
+      int hearts = 0,
+      int skill = 0,
+      int swords = 0,
+      int teleports = 0})
+      : effect = Reward(
+            boots: boots,
+            gold: gold,
+            hearts: hearts,
+            drawCards: drawCards,
+            skill: skill,
+            swords: swords,
+            teleports: teleports);
+}
+
+typedef TriggerEffects = TriggerResult Function(EffectTriggers triggers);
 
 class EffectTriggers {
   final bool haveCrown;
@@ -254,23 +371,24 @@ class EffectTriggers {
     required this.haveMonkeyIdol,
   });
 
-  static Effect theMountainKing(EffectTriggers triggers) =>
-      Effect(triggered: triggers.haveCrown, swords: 1, boots: 1);
+  static TriggerResult theMountainKing(EffectTriggers triggers) =>
+      TriggerResult(triggered: triggers.haveCrown, swords: 1, boots: 1);
 
-  static Effect queenOfHearts(EffectTriggers triggers) =>
-      Effect(triggered: triggers.haveCrown, hearts: 1);
+  static TriggerResult queenOfHearts(EffectTriggers triggers) =>
+      TriggerResult(triggered: triggers.haveCrown, hearts: 1);
 
-  static Effect ifTwoCompanionInPlayAreaDrawCard(EffectTriggers triggers) =>
-      Effect(triggered: triggers.twoCompanionsInPlayArea, drawCards: 1);
+  static TriggerResult ifTwoCompanionInPlayAreaDrawCard(
+          EffectTriggers triggers) =>
+      TriggerResult(triggered: triggers.twoCompanionsInPlayArea, drawCards: 1);
 
-  static Effect koboldMerchant(EffectTriggers triggers) =>
-      Effect(triggered: triggers.haveArtifact, skill: 2);
+  static TriggerResult koboldMerchant(EffectTriggers triggers) =>
+      TriggerResult(triggered: triggers.haveArtifact, skill: 2);
 
-  static Effect wandOfRecall(EffectTriggers triggers) =>
-      Effect(triggered: triggers.haveArtifact, teleports: 1);
+  static TriggerResult wandOfRecall(EffectTriggers triggers) =>
+      TriggerResult(triggered: triggers.haveArtifact, teleports: 1);
 
-  static Effect archaeologist(EffectTriggers triggers) =>
-      Effect(triggered: triggers.haveMonkeyIdol, skill: 2);
+  static TriggerResult archaeologist(EffectTriggers triggers) =>
+      TriggerResult(triggered: triggers.haveMonkeyIdol, skill: 2);
 }
 
 typedef ConditionalPoints = int Function(PointsConditions conditions);
@@ -484,7 +602,7 @@ const List<CardType> baseSetAllCardTypes = [
     count: 2,
     skill: 2,
     swords: 2,
-    queuedEffect: QueuedEffect.replaceCardInDungeonRow,
+    queuedEffect: ReplaceCardTypeInDungeonRow(),
     skillCost: 3,
   ),
   CardType(
@@ -495,6 +613,12 @@ const List<CardType> baseSetAllCardTypes = [
     skill: 2,
     endOfTurn: EndOfTurn.trashPlayedBurgle,
     skillCost: 3,
+  ),
+  CardType(
+    name: 'Sleight of Hand',
+    count: 2,
+    queuedEffect: DiscardToTrigger(Reward(drawCards: 2)),
+    skillCost: 2,
   ),
 
   // Singletons
@@ -720,36 +844,43 @@ const List<CardType> baseSetAllCardTypes = [
     triggers: EffectTriggers.ifTwoCompanionInPlayAreaDrawCard,
     skillCost: 3,
   ),
-  // CardType(
-  //   name: 'Wand of Wind',
+  CardType(
+    name: 'Apothecary',
+    subtype: CardSubType.companion,
+    count: 1,
+    points: 2,
+    queuedEffect: DiscardToTrigger(Choice([
+      Reward(swords: 3),
+      Reward(gold: 2),
+      Reward(hearts: 1),
+    ])),
+    skillCost: 3,
+  ),
+  // choice: Choice([Teleport(), TakeSecret()])
+  // When executing a card, queues the Choice in the right slot on turn.
+  // ActionGenerator then generates actions based on the Choice, which in turn
+// are then executed by executeAction with sufficient context.
   //
-  //   count: 1,
-  //   points: 3,
-  //   orEffects: [
-  //     OrEffect(special: OrSpecial.teleport),
-  //     OrEffect(special: OrSpecial.takeSecretFromAdjacentRoom)
-  //   ],
-  //   skillCost: 6,
-  // ),
+  CardType(
+    name: 'Wand of Wind',
+    count: 1,
+    points: 3,
+    queuedEffect: Choice([Teleport(), TakeSecretFromAdjacentRoom()]),
+    skillCost: 6,
+  ),
   CardType(
     name: 'Mister Whiskers',
     subtype: CardSubType.companion,
     count: 1,
     points: 1,
     dragon: true,
-    orEffects: [
-      OrEffect(special: OrSpecial.dragonAttack),
-      OrEffect(clank: -2),
-    ],
+    queuedEffect: Choice([DragonAttack(), Reward(clank: -2)]),
     skillCost: 1,
   ),
   CardType(
     name: 'Underworld Dealing',
     count: 1,
-    orEffects: [
-      OrEffect(gainGold: 1),
-      OrEffect(special: OrSpecial.spendSevenGoldForTwoSecretTomes)
-    ],
+    queuedEffect: Choice([Reward(gold: 1), SpendGoldForSecretTomes()]),
     skillCost: 1,
   ),
 
@@ -824,16 +955,14 @@ const List<CardType> baseSetAllCardTypes = [
   ),
 
   // Devices
-  CardType(
+  CardType.device(
     name: 'Ladder',
-    subtype: CardSubType.device,
     count: 2,
     boots: 2,
     skillCost: 3,
   ),
-  CardType(
+  CardType.device(
     name: 'The Vault',
-    subtype: CardSubType.device,
     location: Location.deep,
     count: 1,
     dragon: true,
@@ -841,28 +970,24 @@ const List<CardType> baseSetAllCardTypes = [
     clank: 3,
     skillCost: 3,
   ),
-  CardType(
+  CardType.device(
     name: 'Teleporter',
-    subtype: CardSubType.device,
     count: 2,
     teleports: 1,
     skillCost: 4,
   ),
-  // CardType(
-  //   name: 'Dragon Shrine',
-  //
-  //   subtype: CardSubType.device,
-  //   count: 2,
-  //   danger: true,
-  //   orEffects: [OrEffect(gainGold: 2), OrEffect(special: OrSpecial.trashACard)],
-  //   skillCost: 4,
-  // ),
-  CardType(
+  CardType.device(
+    name: 'Dragon Shrine',
+    count: 2,
+    danger: true,
+    queuedEffect: Choice([Reward(gold: 2), TrashOneCard()]),
+    skillCost: 4,
+  ),
+  CardType.device(
     name: 'Shrine',
-    subtype: CardSubType.device,
     count: 3,
     arriveReturnDragonCubes: 3,
-    orEffects: [OrEffect(gainGold: 1), OrEffect(hearts: 1)],
+    queuedEffect: Choice([Reward(gold: 1), Reward(hearts: 1)]),
     skillCost: 2,
   ),
 ];
