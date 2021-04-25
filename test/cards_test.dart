@@ -267,7 +267,7 @@ void main() {
     executeChoice(game, 0, expectedChoiceCount: 1); // only one choice.
     expect(player.gold, 1);
 
-    player.gold = 7;
+    player.setGoldWithoutEffects(7);
     addAndPlayCard(game, underWorldDealing.name);
     executeChoice(game, 1, expectedChoiceCount: 2);
     expect(player.gold, 0);

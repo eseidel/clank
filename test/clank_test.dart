@@ -455,7 +455,7 @@ void main() {
     var game = makeGameWithPlayerCount(1);
     var player = game.activePlayer;
     expect(game.pointsForPlayer(player), 0);
-    player.gold = 5;
+    player.setGoldWithoutEffects(5);
     expect(game.pointsForPlayer(player), 5);
     player.status = PlayerStatus.knockedOut;
     expect(game.pointsForPlayer(player), 5);
@@ -586,11 +586,11 @@ void main() {
 
     addCard('The Duke');
     expect(game.pointsForPlayer(player), 48);
-    player.gold = 5;
+    player.setGoldWithoutEffects(5);
     expect(game.pointsForPlayer(player), 54);
-    player.gold = 7;
+    player.setGoldWithoutEffects(7);
     expect(game.pointsForPlayer(player), 56);
-    player.gold = 10;
+    player.setGoldWithoutEffects(10);
     expect(game.pointsForPlayer(player), 60);
   });
 

@@ -21,7 +21,10 @@ class Player {
   late PlayerToken token;
   late PlayerColor color;
 
-  int gold = 0;
+  int _gold = 0;
+  int get gold => _gold;
+  void setGoldWithoutEffects(int newGold) => _gold = newGold;
+
   List<LootToken> loot = [];
   Player({required this.planner, PlayerDeck? deck})
       : deck = deck ?? PlayerDeck();
@@ -176,6 +179,18 @@ class Turn {
 
   void enteredCrystalCave() => _exhausted = true;
   bool get exhausted => _exhausted && !ignoreExhaustion;
+
+  void gainGold(int gain) {
+    assert(gain > 0);
+    player.setGoldWithoutEffects(player.gold + gain);
+  }
+
+  void spendGold(int cost) {
+    if (player.gold < cost) {
+      throw ArgumentError('$cost gold required (${player.gold} available).');
+    }
+    player.setGoldWithoutEffects(player.gold - cost);
+  }
 
   void addTurnResourcesFromCard(CardType cardType) {
     skill += cardType.skill;
@@ -414,10 +429,7 @@ class ActionExecutor {
       return;
     }
     if (effect is SpendGoldForSecretTomes) {
-      if (turn.player.gold < 7) {
-        throw ArgumentError('7 gold required.');
-      }
-      turn.player.gold -= 7;
+      turn.spendGold(7);
       var secretTome = game.box.cardTypeByName('Secret Tome');
       var cards = [
         board.reserve.takeCard(secretTome),
@@ -430,7 +442,7 @@ class ActionExecutor {
   }
 
   void executeRewardEffect(Reward effect) {
-    turn.player.gold += effect.gold;
+    turn.gainGold(effect.gold);
     turn.teleports += effect.teleports; // Remove.
     if (effect.hearts != 0) {
       board.healDamage(turn.player, effect.hearts);
@@ -471,7 +483,7 @@ class ActionExecutor {
     if (cardType.othersClank != 0) {
       game.addClankForOthers(cardType.othersClank);
     }
-    turn.player.gold += cardType.gainGold;
+    turn.gainGold(cardType.gainGold);
 
     TriggerEffects? triggers = cardType.triggers;
     if (triggers != null) {
@@ -515,7 +527,7 @@ class ActionExecutor {
     turn.swords += itemType.swords;
     turn.boots += itemType.boots;
     turn.skill += itemType.skill;
-    turn.player.gold += itemType.gold;
+    turn.gainGold(itemType.gold);
 
     if (itemType.hearts != 0) {
       board.healDamage(turn.player, itemType.hearts);
