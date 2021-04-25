@@ -1,6 +1,7 @@
 import 'package:clank/actions.dart';
 import 'package:clank/graph.dart';
 import 'package:test/test.dart';
+import 'package:clank/clank.dart';
 import 'common.dart';
 
 void main() {
@@ -24,8 +25,20 @@ void main() {
     expect(moves.length, 2); // spend 1 hp, spend 2 hp.
     expect(moves.any((move) => move.spendHealth > 0), true);
 
-    // TODO: Can't spend hp if you're almost dead.
-    // TODO: Can't spend hp if you have no cubes to spend.
+    // Can't spend HP when almost dead.
+    var hpLeft = board.healthFor(player);
+    board.takeDamage(player, hpLeft - 1);
+    expect(board.healthFor(player), 1);
+    expect(generator.possibleMoves().length, 0); // no hp left to spend!
+
+    board.healDamage(player, 1);
+    expect(generator.possibleMoves().length, 1); // spend 1 hp.
+
+    // Can't spend hp if you have no cubes to spend.
+    var cubesLeft = board.stashCountFor(player);
+    turn.adjustActivePlayerClank(cubesLeft);
+
+    expect(generator.possibleMoves().length, 0); // no cubes to spend!
   });
 
   test('crystal cave exhaustion', () {
@@ -68,8 +81,49 @@ void main() {
     expect(turn.boots, 6);
     moves = generator.possibleMoves();
     expect(moves.length, 1); // No longer exhausted!
+  });
 
-    // TODO: Test teleporting into a room still gets exhausted.
+  test('crystal cave exhaustion after teleport', () {
+    var game = makeGameWithPlayerCount(1);
+    var board = game.board;
+    var player = game.activePlayer;
+
+    var builder = GraphBuilder();
+    var from = Space.at(0, 0);
+    var to = Space.at(0, 1, isCrystalCave: true);
+    builder.connect(from, to);
+    board.graph = Graph(start: Space.start(), allSpaces: [from, to]);
+    player.token.moveTo(from);
+
+    var turn = game.turn;
+    turn.teleports = 1;
+    var generator = ActionGenerator(turn);
+    var moves = generator.possibleMoves();
+    expect(moves.length, 1); // teleport to 'to' (no boots, can't 'move').
+    game.executeAction(moves.first);
+    expect(turn.exhausted, isTrue);
+
+    turn.boots = 4;
+    moves = generator.possibleMoves();
+    expect(moves.length, 0); // No legal moves, despite having 4 boots.
+    expect(turn.boots, 4);
+
+    turn.teleports = 1;
+    moves = generator.possibleMoves();
+    expect(moves.length, 1); // Teleporting is still possible.
+    game.executeAction(moves.first);
+    expect(turn.boots, 4);
+    expect(turn.exhausted, isTrue);
+
+    moves = generator.possibleMoves();
+    expect(moves.length, 0); // Even after teleporting again, still exhausted.
+    expect(turn.boots, 4);
+
+    addAndPlayCard(game, 'Dead Run');
+    expect(turn.exhausted, isFalse);
+    expect(turn.boots, 6);
+    moves = generator.possibleMoves();
+    expect(moves.length, 1); // No longer exhausted!
   });
 
   test('master key unlocks tunnels', () {
