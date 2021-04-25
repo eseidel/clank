@@ -19,7 +19,7 @@ enum LootMode {
   discardImmediately,
 }
 
-class Loot {
+class Loot implements EffectSource {
   final LootType type;
   final String name;
   final LootMode mode;
@@ -32,6 +32,7 @@ class Loot {
   final int acquireSkill;
   final int acquireDrawCards;
   final int acquireRage;
+  final Effect? acquireQueuedEffect;
 
   const Loot.majorSecret({
     required this.name,
@@ -45,7 +46,8 @@ class Loot {
   })  : type = LootType.majorSecret,
         boots = 0,
         swords = 0,
-        acquireRage = 0;
+        acquireRage = 0,
+        acquireQueuedEffect = null;
 
   const Loot.minorSecret({
     required this.name,
@@ -59,6 +61,7 @@ class Loot {
     this.acquireRage = 0,
     this.boots = 0,
     this.swords = 0,
+    this.acquireQueuedEffect,
   }) : type = LootType.minorSecret;
 
   const Loot.artifact({
@@ -73,7 +76,8 @@ class Loot {
         boots = 0,
         swords = 0,
         mode = LootMode.keep,
-        acquireRage = 1;
+        acquireRage = 1,
+        acquireQueuedEffect = null;
 
   const Loot.market({
     required this.name,
@@ -87,7 +91,8 @@ class Loot {
         boots = 0,
         swords = 0,
         mode = LootMode.keep,
-        acquireRage = 0;
+        acquireRage = 0,
+        acquireQueuedEffect = null;
 
   const Loot.special({
     required this.name,
@@ -101,7 +106,8 @@ class Loot {
         boots = 0,
         swords = 0,
         mode = LootMode.keep,
-        acquireRage = 0;
+        acquireRage = 0,
+        acquireQueuedEffect = null;
 
   // A bit of a hack.  Crown is the only same-named loot with varying points. :/
   bool get isCrown => name.startsWith('Crown');
@@ -143,7 +149,8 @@ List<Loot> allLootDescriptions = const [
       name: 'Potion of Strength', mode: LootMode.canUse, count: 2, swords: 2),
   Loot.minorSecret(
       name: 'Potion of Swiftness', mode: LootMode.canUse, count: 2, boots: 1),
-  // Loot.minorSecret(name: 'Magic Spring', count: 2, endOfTurnTrash: 1),
+  Loot.minorSecret(
+      name: 'Magic Spring', count: 2, acquireQueuedEffect: TrashOneCard()),
 
   // Artifacts
   Loot.artifact(name: 'Ring', points: 5),
@@ -229,11 +236,13 @@ class Box {
   }
 
   Card makeOne(String name) => Card._(cardTypeByName(name));
+  Card makeOneOfType(CardType cardType) => Card._(cardType);
+
+  Iterable<CardType> get dungeonCardTypes =>
+      baseSetAllCardTypes.where((type) => type.set == CardSet.dungeon);
 
   Iterable<Card> makeDungeonDeck() {
-    var dungeonTypes =
-        baseSetAllCardTypes.where((type) => type.set == CardSet.dungeon);
-    var dungeonCardLists = dungeonTypes
+    var dungeonCardLists = dungeonCardTypes
         .map((type) => List.generate(type.count, (_) => Card._(type)));
     return dungeonCardLists.expand((element) => element);
   }

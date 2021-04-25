@@ -73,13 +73,14 @@ class UseDevice extends Action {
 }
 
 class Response extends Action {
-  CardType trigger;
+  EffectSource trigger;
   Response({required this.trigger});
 }
 
 class ReplaceCardInDungeonRow extends Response {
   final CardType cardType;
-  ReplaceCardInDungeonRow({required CardType trigger, required this.cardType})
+  ReplaceCardInDungeonRow(
+      {required EffectSource trigger, required this.cardType})
       : super(trigger: trigger) {
     assert(cardType.set == CardSet.dungeon);
   }
@@ -87,13 +88,13 @@ class ReplaceCardInDungeonRow extends Response {
 
 class TakeEffect extends Response {
   final ImmediateEffect effect;
-  TakeEffect({required CardType trigger, required this.effect})
+  TakeEffect({required EffectSource trigger, required this.effect})
       : super(trigger: trigger);
 }
 
 class ChooseFrom extends Response {
   final List<Action> options;
-  ChooseFrom({required CardType trigger, required this.options})
+  ChooseFrom({required EffectSource trigger, required this.options})
       : super(trigger: trigger);
 }
 
@@ -101,19 +102,21 @@ class DiscardCard extends Response {
   final CardType cardType;
   final Effect effect;
   DiscardCard(
-      {required CardType trigger, required this.cardType, required this.effect})
+      {required EffectSource trigger,
+      required this.cardType,
+      required this.effect})
       : super(trigger: trigger);
 }
 
 class TrashACard extends Response {
   final CardType cardType;
-  TrashACard({required CardType trigger, required this.cardType})
+  TrashACard({required EffectSource trigger, required this.cardType})
       : super(trigger: trigger);
 }
 
 class TakeAdjacentSecret extends Response {
   final Space from;
-  TakeAdjacentSecret({required CardType trigger, required this.from})
+  TakeAdjacentSecret({required EffectSource trigger, required this.from})
       : super(trigger: trigger);
 }
 
@@ -226,7 +229,7 @@ class ActionGenerator {
   }
 
   Iterable<Action> actionsFromEffect(
-      {required CardType trigger, required Effect effect}) sync* {
+      {required EffectSource trigger, required Effect effect}) sync* {
     if (effect is ImmediateEffect) {
       Condition? condition = effect.condition;
       if (condition == null || turn.effectConditions.conditionMet(condition)) {

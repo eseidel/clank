@@ -138,7 +138,7 @@ class Player {
 }
 
 class PendingAction {
-  final CardType trigger;
+  final EffectSource trigger;
   final PendingEffect effect;
   PendingAction(this.trigger, this.effect);
 }
@@ -393,6 +393,9 @@ class ActionExecutor {
     if (itemType.acquireDrawCards != 0) {
       turn.player.deck.drawCards(_random, itemType.acquireDrawCards);
     }
+    if (itemType.acquireQueuedEffect != null) {
+      handleQueuedEffect(itemType, itemType.acquireQueuedEffect!);
+    }
   }
 
   void executeAcquireCard(AcquireCard action) {
@@ -469,7 +472,7 @@ class ActionExecutor {
     }
   }
 
-  void handleQueuedEffect(CardType trigger, Effect effect) {
+  void handleQueuedEffect(EffectSource trigger, Effect effect) {
     if (effect is PendingEffect) {
       turn.queuePendingAction(PendingAction(trigger, effect));
       return;
@@ -795,8 +798,8 @@ class ClankGame {
         possiblePendingActionCount() == 0, 'Must resolve all pending actions.');
     // You must play all cards
     assert(turn.hand.isEmpty);
+    executeEndOfTurnEffects(); // Execute before drawing new hand.
     activePlayer.deck.discardPlayAreaAndDrawNewHand(_random);
-    executeEndOfTurnEffects();
 
     // Refill the dungeon row
     ArrivalTriggers triggers = board.refillDungeonRow();

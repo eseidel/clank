@@ -32,7 +32,9 @@ enum SpecialEffect {
   gemTwoSkillDiscount,
 }
 
-class CardType {
+class EffectSource {}
+
+class CardType implements EffectSource {
   final String name;
   final CardSet set;
   final int skill;

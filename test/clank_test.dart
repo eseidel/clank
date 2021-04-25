@@ -592,14 +592,14 @@ void main() {
     expect(turn.hand.length, 8);
     expect(player.loot, isEmpty);
 
-    // player.deck.hand = fiveUniqueCards(); // replace 8c hand with 5 unique cards
-    // expect(turn.cardTypesInDiscardAndPlayArea.length, 0);
-    // expect(player.deck.cardCount, 7); // 5 unique in hand, only 2 left in draw
-    // takeItem('Magic Spring');
-    // player.deck.discardHand();
-    // executeChoice(game, 0, expectedChoiceCount: 5); // unique types = 5 choices
-    // game.executeEndOfTurn();
-    // expect(player.deck.cardCount, 9);
+    player.deck.hand = fiveUniqueCards(); // replace 8c hand with 5 unique cards
+    expect(turn.cardTypesInDiscardAndPlayArea.length, 0);
+    expect(player.deck.cardCount, 7); // 5 unique in hand, only 2 left in draw
+    takeItem('Magic Spring');
+    player.deck.discardHand();
+    executeChoice(game, 1, expectedChoiceCount: 5); // unique types = 5 choices
+    game.executeEndOfTurn();
+    expect(player.deck.cardCount, 9);
   });
 
   test('conditional points effects', () {

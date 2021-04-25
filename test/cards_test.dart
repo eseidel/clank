@@ -2,6 +2,7 @@ import 'package:clank/actions.dart';
 import 'package:clank/clank.dart';
 import 'package:clank/graph.dart';
 import 'package:test/test.dart';
+
 import 'common.dart';
 
 void main() {
@@ -192,6 +193,9 @@ void main() {
     var board = game.board;
     var turn = game.turn;
 
+    // 6 unique cards
+    board.dungeonRow =
+        box.dungeonCardTypes.take(6).map(box.makeOneOfType).toList();
     addAndPlayCard(game, 'Treasure Hunter');
     expect(turn.skill, 2);
     expect(turn.swords, 2);
