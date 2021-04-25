@@ -90,8 +90,6 @@ class CardType {
     this.skillCost = 0,
     this.points = 0,
     this.dragon = false,
-    this.arriveClank = 0,
-    this.arriveReturnDragonCubes = 0,
     this.acquireClank = 0,
     this.acquireSwords = 0,
     this.acquireHearts = 0,
@@ -112,12 +110,13 @@ class CardType {
   })  : swordsCost = 0,
         neverDiscards = false,
         danger = false,
+        arriveReturnDragonCubes = 0,
+        arriveClank = 0,
         assert(skill >= 0),
         assert(boots >= 0),
         assert(swords >= 0),
         assert(skillCost >= 0),
         assert(points >= 0),
-        assert(arriveClank >= 0),
         assert(acquireBoots >= 0),
         assert(acquireClank >= 0),
         assert(acquireHearts >= 0),
@@ -164,6 +163,45 @@ class CardType {
         assert(swordsCost > 0),
         assert(arriveClank >= 0),
         assert(gainGold >= 0);
+
+  const CardType.gem({
+    required this.name,
+    required this.count,
+    required this.skillCost,
+    this.points = 0,
+    this.drawCards = 0, // always 1, leaving to be explict for now.
+    this.acquireClank = 0, // always 2, leaving to be explicit for now.
+    this.dragon = false, // always true, leaving to be explicit for now.
+    this.location = Location.everywhere,
+    this.pointsCondition,
+  })  : subtype = CardSubType.gem,
+        set = CardSet.dungeon,
+        swordsCost = 0,
+        skill = 0,
+        swords = 0,
+        boots = 0,
+        gainGold = 0,
+        clank = 0,
+        teleports = 0,
+        danger = false,
+        acquireSwords = 0,
+        acquireHearts = 0,
+        acquireBoots = 0,
+        arriveClank = 0,
+        arriveReturnDragonCubes = 0,
+        othersClank = 0,
+        neverDiscards = false,
+        ignoreExhaustion = false,
+        ignoreMonsters = false,
+        specialEffect = SpecialEffect.none,
+        endOfTurn = null,
+        triggers = null,
+        queuedEffect = null,
+        assert(skillCost > 0),
+        assert(drawCards == 1), // All known gems draw 1 card.
+        assert(acquireClank == 2), // All known gems acquireClank = 2.
+        assert(dragon == true), // All known gems dragon == true.
+        assert(points > 0 || pointsCondition != null);
 
   const CardType.device({
     required this.name,
@@ -464,9 +502,8 @@ const List<CardType> baseSetAllCardTypes = [
   ),
 
   // Dungeon Deck
-  CardType(
+  CardType.gem(
     name: 'Sapphire',
-    subtype: CardSubType.gem,
     count: 3,
     points: 4,
     drawCards: 1,
@@ -474,9 +511,8 @@ const List<CardType> baseSetAllCardTypes = [
     acquireClank: 2,
     skillCost: 4,
   ),
-  CardType(
+  CardType.gem(
     name: 'Ruby',
-    subtype: CardSubType.gem,
     count: 2,
     points: 6,
     drawCards: 1,
@@ -484,9 +520,8 @@ const List<CardType> baseSetAllCardTypes = [
     acquireClank: 2,
     skillCost: 6,
   ),
-  CardType(
+  CardType.gem(
     name: 'Emerald',
-    subtype: CardSubType.gem,
     count: 2,
     points: 5,
     drawCards: 1,
@@ -652,11 +687,11 @@ const List<CardType> baseSetAllCardTypes = [
     drawCards: 1,
     skillCost: 4,
   ),
-  CardType(
+  CardType.gem(
     name: 'Diamond',
-    subtype: CardSubType.gem,
     count: 1,
     points: 8,
+    dragon: true,
     drawCards: 1,
     acquireClank: 2,
     skillCost: 8,
@@ -737,10 +772,9 @@ const List<CardType> baseSetAllCardTypes = [
     skill: 3,
     skillCost: 6,
   ),
-  CardType(
+  CardType.gem(
     name: "Dragon's Eye",
     count: 1,
-    subtype: CardSubType.gem,
     pointsCondition: PointsConditions.dragonsEye,
     location: Location.deep,
     dragon: true,
