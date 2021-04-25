@@ -99,6 +99,12 @@ class Space {
         inDepths = true;
 
   Iterable<LootToken> get loot => tokens.whereType<LootToken>();
+  Iterable<LootToken> get secrets => loot.where((loot) => loot.isSecret);
+
+  bool isAdjacentTo(Space other) {
+    // Does this need to check both ways?
+    return edges.any((edge) => edge.end == other);
+  }
 
   @override
   String toString() => '[$name]';
