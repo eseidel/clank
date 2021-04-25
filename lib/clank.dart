@@ -442,8 +442,10 @@ class ActionExecutor {
   }
 
   void executeRewardEffect(Reward effect) {
-    turn.gainGold(effect.gold);
-    turn.teleports += effect.teleports; // Remove.
+    if (effect.gold != 0) {
+      turn.gainGold(effect.gold);
+    }
+    turn.teleports += effect.teleports;
     if (effect.hearts != 0) {
       board.healDamage(turn.player, effect.hearts);
     }
@@ -483,7 +485,9 @@ class ActionExecutor {
     if (cardType.othersClank != 0) {
       game.addClankForOthers(cardType.othersClank);
     }
-    turn.gainGold(cardType.gainGold);
+    if (cardType.gainGold != 0) {
+      turn.gainGold(cardType.gainGold);
+    }
 
     TriggerEffects? triggers = cardType.triggers;
     if (triggers != null) {
@@ -527,8 +531,9 @@ class ActionExecutor {
     turn.swords += itemType.swords;
     turn.boots += itemType.boots;
     turn.skill += itemType.skill;
-    turn.gainGold(itemType.gold);
-
+    if (itemType.gold != 0) {
+      turn.gainGold(itemType.gold);
+    }
     if (itemType.hearts != 0) {
       board.healDamage(turn.player, itemType.hearts);
     }
