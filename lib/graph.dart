@@ -209,12 +209,61 @@ class FrontGraphBuilder extends GraphBuilder {
       Space.depths(3, 2, isMarket: true, special: Special.minorSecret),
       Space.depths(3, 3, isMarket: true, special: Special.minorSecret),
       Space.depths(3, 4, special: Special.artifact, expectedArtifactValue: 7),
-      Space.depths(4, 4, isCrystalCave: true, special: Special.minorSecret),
+      Space.depths(3, 4, isCrystalCave: true, special: Special.minorSecret),
     ];
     connect(row[0], row[1]);
     connect(row[3], row[4]);
     connect(row[4], row[5]);
     connect(row[5], row[0]); // wrap around
+    return row;
+  }
+
+  List<Space> buildFifthRow() {
+    List<Space> row = [
+      Space.depths(4, 0, special: Special.monkeyShrine),
+      Space.depths(4, 1,
+          isCrystalCave: true,
+          special: Special.artifact,
+          expectedArtifactValue: 15),
+      Space.depths(4, 2, special: Special.majorSecret),
+      Space.depths(4, 3, isMarket: true),
+      Space.depths(4, 4,
+          isMarket: true, special: Special.artifact, expectedArtifactValue: 10),
+      Space.depths(4, 5, isCrystalCave: true, special: Special.majorSecret),
+      Space.depths(4, 6, special: Special.majorSecret),
+    ];
+    connect(row[0], row[1]);
+    connect(row[2], row[3], requiresKey: true);
+    connect(row[3], row[4]);
+    return row;
+  }
+
+  List<Space> buildSixthRow() {
+    List<Space> row = [
+      // Monkey shrine is part of fifth row.
+      Space.depths(5, 0, special: Special.minorSecret),
+      Space.depths(5, 1, special: Special.artifact, expectedArtifactValue: 20),
+      Space.depths(5, 2, isCrystalCave: true, special: Special.minorSecret),
+      Space.depths(5, 3, special: Special.artifact, expectedArtifactValue: 25),
+      Space.depths(5, 4, special: Special.heart),
+      Space.depths(5, 5, special: Special.artifact, expectedArtifactValue: 30),
+    ];
+    connect(row[0], row[1], monsters: 2);
+    connect(row[1], row[2], requiresKey: true);
+    connect(row[2], row[3], monsters: 2);
+    connect(row[3], row[4], monsters: 1, extraBoots: 1);
+    return row;
+  }
+
+  List<Space> buildSeventhRow() {
+    List<Space> row = [
+      Space.depths(6, 0),
+      Space.depths(6, 1, special: Special.majorSecret),
+      Space.depths(6, 2, special: Special.heart),
+      Space.depths(6, 3, special: Special.majorSecret, isCrystalCave: true),
+    ];
+    connect(row[0], row[1], requiresKey: true);
+    connect(row[2], row[3], extraBoots: 1, monsters: 1);
     return row;
   }
 
@@ -242,12 +291,39 @@ class FrontGraphBuilder extends GraphBuilder {
     connect(third[2], fourth[1], extraBoots: 1);
     connect(third[2], fourth[2], monsters: 2);
     connect(third[3], fourth[4], requiresKey: true);
+    var fifth = buildFifthRow();
+    connect(fourth[0], fifth[0]);
+    connect(fourth[1], fifth[2], extraBoots: 1, monsters: 1);
+    connect(fourth[1], fifth[3]);
+    connect(fourth[2], fifth[3]);
+    connect(fourth[3], fifth[4]);
+    connect(fourth[3], fifth[5], monsters: 1);
+    connect(fourth[5], fifth[6], requiresKey: true);
+    var sixth = buildSixthRow();
+    connect(sixth[0], fifth[0], oneway: true);
+    connect(sixth[0], fifth[3], extraBoots: 1);
+    connect(sixth[1], fifth[3], monsters: 2);
+    connect(sixth[2], fifth[4], requiresKey: true);
+    connect(sixth[4], fifth[5], oneway: true);
+    connect(sixth[5], fifth[6], monsters: 1);
+    var seventh = buildSeventhRow();
+    connect(fifth[0], seventh[0], oneway: true);
+    connect(seventh[0], sixth[0]);
+    connect(seventh[1], sixth[1], monsters: 1);
+    connect(seventh[2], sixth[1], extraBoots: 1);
+    connect(seventh[2], sixth[3], monsters: 2);
+    connect(seventh[3], sixth[3]);
 
-    List<Space> allSpaces = [start];
-    allSpaces.addAll(first);
-    allSpaces.addAll(second);
-    allSpaces.addAll(third);
-    allSpaces.addAll(fourth);
+    List<Space> allSpaces = [
+      start,
+      ...first,
+      ...second,
+      ...third,
+      ...fourth,
+      ...fifth,
+      ...sixth,
+      ...seventh
+    ];
 
     return Graph(start: start, allSpaces: allSpaces);
   }

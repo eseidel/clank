@@ -13,10 +13,19 @@ dart run bin/simulate.dart
 
 ## Missing Features
 * Market (including backpacks to carry more)
-* Missing "deep" half of map.
 
 ## Issues
 * Most games end w/o escape since random planning just walks around.
+* Occasional trash exception:
+Unhandled exception:
+Invalid argument(s): Cannot trash cardType Burgle not found in discard or play area.
+#0      Player.trashCardOfType (package:clank/clank.dart:104:5)
+#1      TrashCard.execute (package:clank/clank.dart:342:17)
+#2      ClankGame.executeEndOfTurnEffects (package:clank/clank.dart:835:14)
+#3      ClankGame.executeEndOfTurn (package:clank/clank.dart:860:5)
+#4      ClankGame.takeTurn (package:clank/clank.dart:799:5)
+<asynchronous suspension>
+#5      main (bin/simulate.dart:8:5)
 
 ## Edge Case Questions
 * Does Treasure Hunter dungeon row replacement cause arrival effects?

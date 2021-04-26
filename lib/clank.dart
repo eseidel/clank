@@ -889,32 +889,42 @@ class ClankGame {
 
     // Artifacts (excluding randomly based on player count)
     var artifacts = allTokens.where((token) => token.isArtifact).toList();
-    for (var space in spacesWithSpecial(Special.artifact)) {
+    var artifactSpaces = spacesWithSpecial(Special.artifact);
+    assert(artifacts.length == 7);
+    assert(artifactSpaces.length == 7);
+    for (var space in artifactSpaces) {
       var token = artifacts
           .firstWhere((token) => token.points == space.expectedArtifactValue);
       assert(token.location == null);
       token.moveTo(space);
     }
+
     // Minor Secrets
     var minorSecrets = allTokens.where((token) => token.isMinorSecret).toList();
     minorSecrets.shuffle(_random);
     for (var space in spacesWithSpecial(Special.minorSecret)) {
+      // Two per spot.
+      minorSecrets.removeLast().moveTo(space);
       minorSecrets.removeLast().moveTo(space);
     }
+    assert(minorSecrets.isEmpty);
+
     // Major Secrets
     var majorSecrets = allTokens.where((token) => token.isMajorSecret).toList();
     majorSecrets.shuffle(_random);
     for (var space in spacesWithSpecial(Special.majorSecret)) {
       majorSecrets.removeLast().moveTo(space);
     }
-    // TODO: Place Monkey Idol Tokens -- needs more of the board implemented.
-    // var monkeyIdols = allTokens.where((token) => token.isMonkeyIdol).toList();
-    // var monkeySpaces = spacesWithSpecial(Special.monkeyShrine);
-    // assert(monkeySpaces.length == 1);
-    // var monkeyShrine = monkeySpaces.first;
-    // for (var idol in monkeyIdols) {
-    //   idol.moveTo(monkeyShrine);
-    // }
+    assert(majorSecrets.length == 2); // Expect to only place 9 of 11.
+
+    var monkeyIdols = allTokens.where((token) => token.isMonkeyIdol).toList();
+    assert(monkeyIdols.length == 3);
+    var monkeySpaces = spacesWithSpecial(Special.monkeyShrine);
+    assert(monkeySpaces.length == 1);
+    var monkeyShrine = monkeySpaces.first;
+    for (var idol in monkeyIdols) {
+      idol.moveTo(monkeyShrine);
+    }
   }
 
   void setupPlayersAndBoard() {
