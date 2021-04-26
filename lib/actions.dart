@@ -148,6 +148,8 @@ class ActionGenerator {
     bool haveResourcesFor(Edge edge, {required bool useTeleport}) {
       if (edge.requiresArtifact && !turn.player.hasArtifact) return false;
       if (useTeleport) return true;
+      if (edge.requiresTeleporter && !useTeleport) return false;
+      assert(!useTeleport || turn.teleports > 0);
       if (turn.exhausted) return false;
       if (edge.requiresKey && !turn.player.hasMasterKey) return false;
       if (edge.bootsCost > turn.boots) return false;

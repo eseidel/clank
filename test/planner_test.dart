@@ -41,6 +41,38 @@ void main() {
     expect(generator.possibleMoves().length, 0); // no cubes to spend!
   });
 
+  test('can traverse one way with teleport', () {
+    var game = makeGameWithPlayerCount(1);
+    var board = game.board;
+    var player = game.activePlayer;
+    var turn = game.turn;
+
+    var builder = GraphBuilder();
+    var from = Space.at(0, 0);
+    var to = Space.at(0, 1);
+    builder.connect(to, from, oneway: true);
+    board.graph = Graph(start: from, allSpaces: [from, to]);
+    player.token.moveTo(from);
+
+    turn.boots = 5;
+    expect(ActionGenerator(turn).possibleMoves().length, 0); // one way
+    turn.teleports += 1;
+    expect(ActionGenerator(turn).possibleMoves().length, 1); // ok to teleport
+
+    // Attempting to use the edge w/o teleport throws:
+    expect(
+        () => game.executeAction(Traverse(
+            edge: from.edges.first, takeItem: false, useTeleport: false)),
+        throwsArgumentError);
+
+    // Attempting to spend teleports we don't have throws:
+    turn.teleports = 0;
+    expect(
+        () => game.executeAction(Traverse(
+            edge: from.edges.first, takeItem: false, useTeleport: true)),
+        throwsArgumentError);
+  });
+
   test('crystal cave exhaustion', () {
     var game = makeGameWithPlayerCount(1);
     var board = game.board;
