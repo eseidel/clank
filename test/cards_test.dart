@@ -236,6 +236,14 @@ void main() {
     game.executeEndOfTurn();
     expect(player.deck.cardCount, 10); // One burgle gone.
     expect(player.countOfCards(game.box.cardTypeByName('Burgle')), 5);
+
+    // No exception if the trashing fails.
+    player.deck.hand = [];
+    player.deck.discardPile = [];
+    player.deck.drawPile = [];
+    expect(player.deck.cardCount, 0);
+    addAndPlayCard(game, 'Master Burglar');
+    expect(() => game.executeEndOfTurn(), returnsNormally);
   });
   test('Gem Collector', () {
     var game = makeGameWithPlayerCount(1);
@@ -530,5 +538,16 @@ void main() {
     expect(board.clankAreaCountFor(player), 0);
     expect(turn.leftoverClankReduction, 0);
     expect(turn.skill, 0);
+  });
+
+  test('Dragon\'s Eye usable outside deep', () {
+    var game = makeGameWithPlayerCount(1);
+    var player = game.activePlayer;
+
+    expect(player.location.inDepths, false);
+    expect(player.deck.hand.length, 5);
+    addAndPlayCard(game, 'Dragon\'s Eye'); // No assert fired.
+    expect(player.deck.playArea.length, 1);
+    expect(player.deck.hand.length, 6); // Added Dragon's Eye, replaced itself.
   });
 }

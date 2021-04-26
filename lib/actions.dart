@@ -14,6 +14,9 @@ class PlayCard extends Action {
       throw ArgumentError('Only buyable cards can be played.');
     }
   }
+
+  @override
+  String toString() => 'plays $cardType';
 }
 
 class Traverse extends Action {
@@ -31,6 +34,8 @@ class Traverse extends Action {
     assert(!takeItem || edge.end.loot.isNotEmpty);
     assert(!useTeleport || spendHealth == 0);
   }
+  @override
+  String toString() => 'moves ${edge.start} to ${edge.end}';
 }
 
 class AcquireCard extends Action {
@@ -42,16 +47,22 @@ class AcquireCard extends Action {
     assert(cardType.skillCost > 0);
     assert(cardType.swordsCost == 0);
   }
+  @override
+  String toString() => 'acquires $cardType';
 }
 
 class UseItem extends Action {
   final Loot item;
   UseItem({required this.item});
+  @override
+  String toString() => 'uses item $item';
 }
 
 class BuyFromMarket extends Action {
   final Loot item;
   BuyFromMarket({required this.item});
+  @override
+  String toString() => 'buys $item';
 }
 
 class Fight extends Action {
@@ -63,6 +74,8 @@ class Fight extends Action {
     assert(cardType.skillCost == 0);
     assert(cardType.swordsCost > 0);
   }
+  @override
+  String toString() => 'fights $cardType';
 }
 
 class UseDevice extends Action {
@@ -75,6 +88,8 @@ class UseDevice extends Action {
       throw ArgumentError('Only device cards can be used.');
     }
   }
+  @override
+  String toString() => 'uses device $cardType';
 }
 
 class Response extends Action {
@@ -125,7 +140,10 @@ class TakeAdjacentSecret extends Response {
       : super(trigger: trigger);
 }
 
-class EndTurn extends Action {}
+class EndTurn extends Action {
+  @override
+  String toString() => 'ends turn';
+}
 
 class ActionGenerator {
   final Turn turn;
@@ -212,7 +230,7 @@ class ActionGenerator {
     }
 
     for (var cardType in turn.board.availableCardTypes) {
-      if (!cardUsableAtLocation(cardType, turn.player.location)) {
+      if (!checkLocationMatchesPlayer(cardType, turn.player.location)) {
         continue;
       }
       if (canAffordAcquireCard(cardType)) {

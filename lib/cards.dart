@@ -275,9 +275,7 @@ class ImmediateEffect extends Effect {
 }
 
 enum EndOfTurn {
-  // trashPlayedCardNow,
   trashPlayedBurgle,
-  // discardToDrawTwo, // Not actually delayed?
 }
 
 enum Condition {
@@ -797,7 +795,7 @@ const List<CardType> baseSetAllCardTypes = [
     name: "Dragon's Eye",
     count: 1,
     pointsCondition: PointsConditions.dragonsEye,
-    location: Location.deep,
+    location: Location.deep, // acquire in
     dragon: true,
     drawCards: 1,
     acquireClank: 2,
@@ -935,7 +933,7 @@ const List<CardType> baseSetAllCardTypes = [
   CardType.monster(
     name: 'Cave Troll',
     count: 1,
-    location: Location.deep,
+    location: Location.deep, // fight in
     dragon: true,
     gainGold: 3,
     drawCards: 2,
@@ -973,7 +971,7 @@ const List<CardType> baseSetAllCardTypes = [
   CardType.monster(
     name: 'Crystal Golem',
     count: 2,
-    location: Location.crystalCave,
+    location: Location.crystalCave, // Fight in
     skill: 3,
     swordsCost: 3,
   ),
@@ -1010,7 +1008,7 @@ const List<CardType> baseSetAllCardTypes = [
   ),
   CardType.device(
     name: 'The Vault',
-    location: Location.deep,
+    location: Location.deep, // use in
     count: 1,
     dragon: true,
     gainGold: 5,

@@ -94,15 +94,17 @@ class Player {
       deck.allCards.where((card) => card.type == cardType).length;
 
   // There must be a shorter way to write this?
-  void trashCardOfType(CardType cardType) {
+  void trashCardOfType(CardType cardType, {bool allowFailure = false}) {
     bool removed =
         deck.playArea.removeFirstWhere((card) => card.type == cardType);
     if (removed) return;
     removed =
         deck.discardPile.removeFirstWhere((card) => card.type == cardType);
     if (removed) return;
-    throw ArgumentError(
-        'Cannot trash cardType $cardType not found in discard or play area.');
+    if (!allowFailure) {
+      throw ArgumentError(
+          'Cannot trash cardType $cardType not found in discard or play area.');
+    }
     // TODO: Should trashed cards go into a trash pile?
   }
 
@@ -318,7 +320,9 @@ class Turn {
   }
 }
 
-bool cardUsableAtLocation(CardType cardType, Space location) {
+// Only call this during the card-compatible Action
+// UseDevice, AcquireCard, FightMonster not during play (e.g. dragon's eye)
+bool checkLocationMatchesPlayer(CardType cardType, Space location) {
   if (cardType.location == Location.crystalCave) {
     return location.isCrystalCave;
   }
@@ -335,11 +339,12 @@ abstract class EndOfTurnEffect {
 
 class TrashCard extends EndOfTurnEffect {
   final CardType cardType;
-  TrashCard(this.cardType);
+  final bool allowFailure;
+  TrashCard(this.cardType, {required this.allowFailure});
 
   @override
   void execute(Turn turn) {
-    turn.player.trashCardOfType(cardType);
+    turn.player.trashCardOfType(cardType, allowFailure: allowFailure);
   }
 }
 
@@ -366,7 +371,6 @@ class ActionExecutor {
   }
 
   void executeRoomEntryEffects(Traverse action) {
-    // print('$player moved: ${edge.end}');
     var player = turn.player;
 
     // Special effect of exiting with an artifact.
@@ -454,6 +458,7 @@ class ActionExecutor {
   void executeAcquireCard(AcquireCard action) {
     CardType cardType = action.cardType;
     assert(cardType.interaction == Interaction.buy);
+    assert(checkLocationMatchesPlayer(cardType, turn.player.location));
     turn.skill -= turn.skillCostForCard(cardType);
     assert(turn.skill >= 0);
     assert(cardType.swordsCost == 0);
@@ -461,7 +466,6 @@ class ActionExecutor {
     Card card = board.takeCard(cardType);
     turn.player.deck.add(card);
     executeAcquireCardEffects(card);
-    print('${turn.player} acquires $card');
   }
 
   void executeMarketBuy(BuyFromMarket action) {
@@ -475,6 +479,7 @@ class ActionExecutor {
   void executeFight(Fight action) {
     CardType cardType = action.cardType;
     assert(cardType.interaction == Interaction.fight);
+    assert(checkLocationMatchesPlayer(cardType, turn.player.location));
     turn.swords -= cardType.swordsCost;
     assert(turn.swords >= 0);
     assert(cardType.skillCost == 0);
@@ -484,13 +489,12 @@ class ActionExecutor {
       board.dungeonDiscard.add(card);
     }
     executeCardUseEffects(action.cardType);
-    print('${turn.player} fought $card');
   }
 
   EndOfTurnEffect createEndOfTurnEffect(EndOfTurn effect) {
     switch (effect) {
       case EndOfTurn.trashPlayedBurgle:
-        return TrashCard(game.box.cardTypeByName('Burgle'));
+        return TrashCard(game.box.cardTypeByName('Burgle'), allowFailure: true);
     }
   }
 
@@ -565,7 +569,6 @@ class ActionExecutor {
 
   // Used by both PlayCard and Fight.
   void executeCardUseEffects(CardType cardType) {
-    assert(cardUsableAtLocation(cardType, turn.player.location));
     turn.addTurnResourcesFromCard(cardType);
     if (cardType.clank != 0) {
       turn.adjustActivePlayerClank(cardType.clank);
@@ -604,6 +607,7 @@ class ActionExecutor {
   void executeUseDevice(UseDevice action) {
     CardType cardType = action.cardType;
     assert(cardType.interaction == Interaction.use);
+    assert(checkLocationMatchesPlayer(cardType, turn.player.location));
     turn.skill -= cardType.skillCost;
     assert(turn.skill >= 0);
     assert(cardType.swordsCost == 0);
@@ -611,7 +615,6 @@ class ActionExecutor {
     Card card = board.takeCard(cardType);
     board.dungeonDiscard.add(card);
     executeCardUseEffects(cardType);
-    print('${turn.player} uses device $card');
   }
 
   void executeItemUseEffects(Loot itemType) {
@@ -630,10 +633,10 @@ class ActionExecutor {
     var item = turn.player.useItem(itemType);
     board.usedItems.add(item);
     executeItemUseEffects(itemType);
-    print('${turn.player} uses item $item');
   }
 
   void executeAction(Action action) {
+    print('${turn.player} $action');
     if (action is EndTurn) {
       return;
     }
@@ -684,7 +687,12 @@ class ActionExecutor {
         return;
       }
       if (action is TrashACard) {
-        turn.endOfTurnEffects.add(TrashCard(action.cardType));
+        // Allow failure means this will *not* crash if it can't find a card
+        // of that type when attempting to trash.  Unclear what the corret
+        // behavior here is.  This happens when a card in the discard is chosen
+        // but then a reshuffle happens before the trashing.
+        turn.endOfTurnEffects
+            .add(TrashCard(action.cardType, allowFailure: true));
         return;
       }
       if (action is TakeEffect) {
@@ -814,7 +822,6 @@ class ClankGame {
       // Never trust what comes back from a plan?
       executor.executeAction(action);
       executeTriggeredEffects();
-      //print(turn);
     } while (!(action is EndTurn));
     executeEndOfTurn();
     bool statusChanged = updatePlayerStatuses();
@@ -1273,7 +1280,7 @@ class Board {
     // FAQ: Players can be damaged regardless of location (e.g. still at flag).
     moveDragonAreaToBag();
     int numberOfCubes = cubeCountForNormalDragonAttack() + additionalCubes;
-    print('DRAGON ATTACK ($numberOfCubes cubes)');
+    print('DRAGON ATTACKS ($numberOfCubes cubes)');
     var drawn = dragonBag.pickAndRemoveCubes(random, numberOfCubes);
     for (var color in PlayerColor.values) {
       // Directly move the cubes to damageTaken (bypassing the stash).

@@ -6,8 +6,9 @@ import 'package:clank/clank.dart';
 
 Future simulateWithSeed(int seed) async {
   print('Seed: $seed');
-  ClankGame game =
-      ClankGame(planners: [RandomPlanner(), RandomPlanner()], seed: seed);
+  ClankGame game = ClankGame(
+      planners: [RandomPlanner(seed: seed), RandomPlanner(seed: seed)],
+      seed: seed);
   int turnCount = 0;
   while (!game.isComplete) {
     await game.takeTurn();
