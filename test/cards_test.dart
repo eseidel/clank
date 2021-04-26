@@ -445,6 +445,8 @@ void main() {
     expect(player.deck.hand.length, 6);
     expect(player.deck.discardPile.length, 1);
 
+    // FAQ (2019) Says "sleight of hand" as last card doesn't generate drawing.
+    // https://d19y2ttatozxjp.cloudfront.net/assets/clank/Clank_FAQ.pdf
     // no discard, no draw
     player.deck.hand = [];
     addAndPlayCard(game, sleightOfHand.name);
@@ -452,7 +454,81 @@ void main() {
     expect(possibleActions.length, 0);
 
     expect(game.possiblePendingActionCount(), 0);
-    // No asserts when ending turn.
+    // No asserts when ending turn, even though still queued as pending.
     expect(() => game.executeEndOfTurn(), returnsNormally);
+  });
+
+  test('Search', () {
+    var game = makeGameWithPlayerCount(1);
+    var player = game.activePlayer;
+
+    addAndPlayCard(game, 'Pickaxe');
+    expect(player.gold, 2);
+    addAndPlayCard(game, 'Pickaxe');
+    expect(player.gold, 4);
+    addAndPlayCard(game, 'Search');
+    expect(player.gold, 6); // Paid for past gold gains as well.
+    addAndPlayCard(game, 'Pickaxe');
+    expect(player.gold, 9);
+  });
+
+  test('Swagger', () {
+    var game = makeGameWithPlayerCount(1);
+    var board = game.board;
+    var player = game.activePlayer;
+    var turn = game.turn;
+
+    addAndPlayCard(game, 'Stumble');
+    expect(board.clankAreaCountFor(player), 1);
+    addAndPlayCard(game, 'Stumble');
+    expect(board.clankAreaCountFor(player), 2);
+
+    // Cards like Swagger look forward/backwards:
+    // https://boardgamegeek.com/thread/1668384/article/24158322#24158322
+    addAndPlayCard(game, 'Swagger');
+    expect(turn.skill, 2);
+    expect(turn.boots, 1);
+    addAndPlayCard(game, 'Stumble');
+    expect(turn.skill, 3);
+    expect(board.clankAreaCountFor(player), 3);
+
+    turn.adjustActivePlayerClank(board.stashCountFor(player));
+    expect(turn.skill, 30);
+    expect(board.stashCountFor(player), 0);
+    expect(board.clankAreaCountFor(player), 30);
+
+    // You don't "make clank" if you can't push cubes:
+    // https://boardgamegeek.com/thread/1668384/article/24171648#24171648
+    addAndPlayCard(game, 'Stumble');
+    expect(turn.skill, 30); // Can't generate clank, so no more skill awarded.
+    expect(board.clankAreaCountFor(player), 30);
+  });
+
+  test('Swagger with negative clank', () {
+    var game = makeGameWithPlayerCount(1);
+    var board = game.board;
+    var player = game.activePlayer;
+    var turn = game.turn;
+
+    addAndPlayCard(game, 'Move Silently');
+    expect(turn.leftoverClankReduction, -2);
+    expect(board.clankAreaCountFor(player), 0);
+    expect(turn.boots, 2);
+
+    addAndPlayCard(game, 'Swagger');
+    expect(turn.skill, 0);
+    expect(turn.boots, 3);
+
+    // You don't "make clank" if you can't push cubes:
+    // https://boardgamegeek.com/thread/1668384/article/24171648#24171648
+    // However currently this implementation is senstive to play order!
+    addAndPlayCard(game, 'Stumble');
+    expect(board.clankAreaCountFor(player), 0);
+    expect(turn.leftoverClankReduction, -1);
+    expect(turn.skill, 0);
+    addAndPlayCard(game, 'Stumble');
+    expect(board.clankAreaCountFor(player), 0);
+    expect(turn.leftoverClankReduction, 0);
+    expect(turn.skill, 0);
   });
 }

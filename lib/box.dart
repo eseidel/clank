@@ -149,6 +149,8 @@ List<Loot> allLootDescriptions = const [
       name: 'Potion of Strength', mode: LootMode.canUse, count: 2, swords: 2),
   Loot.minorSecret(
       name: 'Potion of Swiftness', mode: LootMode.canUse, count: 2, boots: 1),
+  // Magic Spring happens the turn it was found and is manditory:
+  // https://boardgamegeek.com/thread/1656181/article/23992755#23992755
   Loot.minorSecret(
       name: 'Magic Spring', count: 2, acquireQueuedEffect: TrashOneCard()),
 

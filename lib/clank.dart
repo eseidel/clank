@@ -103,7 +103,7 @@ class Player {
     if (removed) return;
     throw ArgumentError(
         'Cannot trash cardType $cardType not found in discard or play area.');
-    // TODO: Should this go into a trash pile?
+    // TODO: Should trashed cards go into a trash pile?
   }
 
   bool hasLoot(Loot lootType) {
@@ -161,6 +161,15 @@ class Turn {
   bool ignoreExhaustion = false;
   bool ignoreMonsters = false;
   bool gemTwoSkillDiscount = false;
+  // Swagger support:
+  int _skillGainPerClank = 0;
+  int _skillAddedForClanks = 0;
+  int _clankGainedThisTurn = 0;
+  // Search support:
+  int _extraGoldPerGoldGain = 0;
+  int _extraGoldGained = 0;
+  int _timesGainedGoldThisTurn = 0;
+
   int leftoverClankReduction = 0; // always negative
   // Some cards have effects which require other conditions to complete
   // Hold them in unresolvedTriggers until they do. (e.g. Rebel Scout)
@@ -183,6 +192,8 @@ class Turn {
   void gainGold(int gain) {
     assert(gain > 0);
     player.setGoldWithoutEffects(player.gold + gain);
+    _timesGainedGoldThisTurn += 1;
+    addExtraGoldIfNecessary();
   }
 
   void spendGold(int cost) {
@@ -190,6 +201,35 @@ class Turn {
       throw ArgumentError('$cost gold required (${player.gold} available).');
     }
     player.setGoldWithoutEffects(player.gold - cost);
+  }
+
+  void increaseExtraGoldPerGoldGainByOne() {
+    _extraGoldPerGoldGain += 1;
+    addExtraGoldIfNecessary();
+  }
+
+  void addExtraGoldIfNecessary() {
+    if (_extraGoldPerGoldGain == 0) return;
+    // Add gold for any past gains
+    int expectedPastExtraGold =
+        _timesGainedGoldThisTurn * _extraGoldPerGoldGain;
+    int extraGoldToAdd = expectedPastExtraGold - _extraGoldGained;
+    _extraGoldGained = expectedPastExtraGold;
+    player.setGoldWithoutEffects(player.gold + extraGoldToAdd);
+  }
+
+  void increaseSkillGainPerClankByOne() {
+    _skillGainPerClank += 1;
+    addExtraSkillFromClankIfNecessary();
+  }
+
+  void addExtraSkillFromClankIfNecessary() {
+    if (_skillGainPerClank == 0) return;
+    // Add skill for any past clank this turn.
+    int expectedPastExtraSkill = _clankGainedThisTurn * _skillGainPerClank;
+    int extraSkillToAdd = expectedPastExtraSkill - _skillAddedForClanks;
+    _skillAddedForClanks = expectedPastExtraSkill;
+    skill += extraSkillToAdd;
   }
 
   void addTurnResourcesFromCard(CardType cardType) {
@@ -239,6 +279,11 @@ class Turn {
         actual = board.adjustClank(player, reduced);
         leftoverClankReduction = min(reduced - actual, 0);
       }
+    }
+    // This may not be correct, as this cares about ordering of negative clank!
+    if (actual > 0) {
+      _clankGainedThisTurn += actual;
+      addExtraSkillFromClankIfNecessary();
     }
     return actual;
   }
@@ -486,6 +531,22 @@ class ActionExecutor {
     throw UnimplementedError('$effect');
   }
 
+  void handleCardSpecialEffect(SpecialEffect specialEffect) {
+    switch (specialEffect) {
+      case SpecialEffect.none:
+        break;
+      case SpecialEffect.gemTwoSkillDiscount:
+        turn.gemTwoSkillDiscount = true;
+        break;
+      case SpecialEffect.increaseGoldGainByOne:
+        turn.increaseExtraGoldPerGoldGainByOne();
+        break;
+      case SpecialEffect.gainOneSkillPerClankGain:
+        turn.increaseSkillGainPerClankByOne();
+        break;
+    }
+  }
+
   // Used by both PlayCard and Fight.
   void executeCardUseEffects(CardType cardType) {
     assert(cardUsableAtLocation(cardType, turn.player.location));
@@ -521,9 +582,7 @@ class ActionExecutor {
       turn.endOfTurnEffects.add(createEndOfTurnEffect(cardType.endOfTurn!));
     }
 
-    if (cardType.specialEffect == SpecialEffect.gemTwoSkillDiscount) {
-      turn.gemTwoSkillDiscount = true;
-    }
+    handleCardSpecialEffect(cardType.specialEffect);
   }
 
   void executeUseDevice(UseDevice action) {
@@ -848,8 +907,14 @@ class ClankGame {
     for (var space in spacesWithSpecial(Special.majorSecret)) {
       majorSecrets.removeLast().moveTo(space);
     }
-    // TODO: Place monkey Tokens
-    // var monkeyTokenSpaces = spacesWithSpecial(Special.monkeyShrine);
+    // TODO: Place Monkey Idol Tokens -- needs more of the board implemented.
+    // var monkeyIdols = allTokens.where((token) => token.isMonkeyIdol).toList();
+    // var monkeySpaces = spacesWithSpecial(Special.monkeyShrine);
+    // assert(monkeySpaces.length == 1);
+    // var monkeyShrine = monkeySpaces.first;
+    // for (var idol in monkeyIdols) {
+    //   idol.moveTo(monkeyShrine);
+    // }
   }
 
   void setupPlayersAndBoard() {

@@ -30,6 +30,8 @@ enum CardSubType {
 enum SpecialEffect {
   none,
   gemTwoSkillDiscount,
+  increaseGoldGainByOne,
+  gainOneSkillPerClankGain,
 }
 
 class EffectSource {}
@@ -654,6 +656,21 @@ const List<CardType> baseSetAllCardTypes = [
     name: 'Sleight of Hand',
     count: 2,
     queuedEffect: DiscardToTrigger(Reward(drawCards: 2)),
+    skillCost: 2,
+  ),
+  CardType(
+    name: 'Search',
+    count: 2,
+    skill: 2,
+    boots: 1,
+    specialEffect: SpecialEffect.increaseGoldGainByOne,
+    skillCost: 4,
+  ),
+  CardType(
+    name: 'Swagger',
+    count: 2,
+    boots: 1,
+    specialEffect: SpecialEffect.gainOneSkillPerClankGain,
     skillCost: 2,
   ),
 
