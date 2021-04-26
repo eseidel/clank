@@ -734,4 +734,82 @@ void main() {
     expect(triggers.refillDragonCubes, 6);
     expect(board.dragonBag.dragonCubesLeft, 16);
   });
+
+  test('availableMarketItemTypes', () {
+    var game = makeGameWithPlayerCount(1);
+    expect(game.board.marketItems.length, 7);
+    var types = game.board.availableMarketItemTypes;
+    expect(types.length, 3);
+    expect(types.any((t) => t.isBackpack), isTrue);
+    expect(types.any((t) => t.isMasterKey), isTrue);
+    expect(types.any((t) => t.isCrown), isTrue);
+    var crown = types.firstWhere((t) => t.isCrown);
+    expect(crown.points, 10);
+
+    game.board.marketItems = [];
+    expect(game.board.availableMarketItemTypes, isEmpty);
+  });
+
+  test('key lets you pass through locked tunnels', () {
+    var game = makeGameWithPlayerCount(1);
+    var board = game.board;
+    var turn = game.turn;
+    var player = turn.player;
+
+    var builder = GraphBuilder();
+    var from = Space.at(0, 0);
+    var to = Space.at(0, 1);
+    builder.connect(from, to, requiresKey: true);
+    board.graph = Graph(start: from, allSpaces: [from, to]);
+    player.token.moveTo(from);
+
+    expect(ActionGenerator(turn).possibleMoves().length, 0);
+    turn.boots = 1;
+    expect(
+        () => game
+            .executeAction(Traverse(edge: from.edges.first, takeItem: false)),
+        throwsArgumentError);
+    expect(ActionGenerator(turn).possibleMoves().length, 0); // Boots but no key
+    player.loot.add(board.marketItems.firstWhere((token) => token.isMasterKey));
+    expect(ActionGenerator(turn).possibleMoves().length, 1);
+  });
+
+  test('backpack allows additional artifacts', () {
+    var game = makeGameWithPlayerCount(1);
+    var board = game.board;
+    var turn = game.turn;
+    var player = turn.player;
+
+    var builder = GraphBuilder();
+    var from = Space.at(0, 0);
+    var to = Space.at(0, 1, special: Special.artifact);
+    builder.connect(from, to);
+    board.graph = Graph(start: from, allSpaces: [from, to]);
+    player.token.moveTo(from);
+
+    var allTokens = box.makeAllLootTokens();
+    player.loot.add(allTokens.firstWhere((token) => token.isArtifact));
+    var artifact = allTokens.firstWhere((token) => token.isArtifact);
+    artifact.moveTo(to);
+
+    turn.boots = 10; // plenty
+    var moves = ActionGenerator(turn).possibleMoves();
+    expect(moves.length, 1);
+    expect(player.canTakeArtifact, false);
+    expect(moves.first.takeItem, false); // We don't have space for another.
+    expect(
+        () => game
+            .executeAction(Traverse(edge: from.edges.first, takeItem: true)),
+        throwsArgumentError); // attempted take throws.
+
+    // Reset after exeception:
+    player.token.moveTo(from);
+    player.loot.add(allTokens.firstWhere((token) => token.isBackpack));
+    expect(player.canTakeArtifact, true);
+    moves = ActionGenerator(turn).possibleMoves();
+    expect(moves.length, 1);
+    expect(moves.first.takeItem, true); // We now have space!
+    game.executeAction(Traverse(edge: from.edges.first, takeItem: true));
+    expect(player.loot.where((loot) => loot.isArtifact).length, 2);
+  });
 }

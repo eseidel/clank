@@ -49,6 +49,11 @@ class UseItem extends Action {
   UseItem({required this.item});
 }
 
+class BuyFromMarket extends Action {
+  final Loot item;
+  BuyFromMarket({required this.item});
+}
+
 class Fight extends Action {
   final CardType cardType;
   Fight({required this.cardType}) {
@@ -225,6 +230,17 @@ class ActionGenerator {
     // so it will yield duplicate UseItems when it shouldn't.
     for (var item in turn.player.usableItems) {
       yield UseItem(item: item.loot);
+    }
+  }
+
+  Iterable<Action> possibleMarketBuys() sync* {
+    // If player is in the market
+    // if market has things available
+    // iterate over possible purchases.
+    for (var item in turn.board.availableMarketItemTypes) {
+      if (turn.player.gold >= Board.marketGoldCost) {
+        yield BuyFromMarket(item: item);
+      }
     }
   }
 

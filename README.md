@@ -11,11 +11,8 @@ https://www.direwolfdigital.com/clank/
 dart run bin/simulate.dart
 ```
 
-## Missing Features
-* Market (including backpacks to carry more)
-
 ## Issues
-* Most games end w/o escape since random planning just walks around.
+* Most games end w/o escape since random planning just wanders randomly.
 * Occasional trash exception:
 Unhandled exception:
 Invalid argument(s): Cannot trash cardType Burgle not found in discard or play area.

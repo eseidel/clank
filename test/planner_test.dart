@@ -192,4 +192,25 @@ void main() {
     // plays = generator.possibleCardPlays();
     // expect(plays.length, 8); // 2 burgle + 2 x 3 apothecary options.
   });
+
+  test('Buy from Market', () {
+    var game = makeGameWithPlayerCount(1);
+    var board = game.board;
+    var turn = game.turn;
+    var player = turn.player;
+
+    expect(ActionGenerator(turn).possibleMarketBuys().length, 0);
+
+    var marketSpace =
+        board.graph.allSpaces.firstWhere((space) => space.isMarket);
+    player.token.moveTo(marketSpace);
+
+    expect(ActionGenerator(turn).possibleMarketBuys().length, 0); // no gold.
+    turn.gainGold(7);
+    expect(ActionGenerator(turn).possibleMarketBuys().length, 3);
+    var buyAction = ActionGenerator(turn).possibleMarketBuys().first;
+    game.executeAction(buyAction);
+    expect(player.gold, 0);
+    expect(player.loot.first.isMarketItem, isTrue);
+  });
 }

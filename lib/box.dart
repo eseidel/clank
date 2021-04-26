@@ -115,6 +115,7 @@ class Loot implements EffectSource {
   bool get isMasterKey => name == 'Master Key';
   bool get isBackpack => name == 'Backpack';
 
+  bool get isMarketItem => type == LootType.market;
   bool get isUsable => mode == LootMode.canUse;
   bool get discardImmediately => mode == LootMode.discardImmediately;
 
@@ -302,6 +303,7 @@ class LootToken extends Token {
   bool get isMinorSecret => loot.type == LootType.minorSecret;
   bool get isMajorSecret => loot.type == LootType.majorSecret;
   bool get isMonkeyIdol => loot.isMonkeyIdol;
+  bool get isMarketItem => loot.isMarketItem;
   bool get isMasterKey => loot.isMasterKey;
   bool get isBackpack => loot.isBackpack;
   bool get isCrown => loot.isCrown;

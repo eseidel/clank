@@ -32,6 +32,9 @@ class Player {
   Space get location => token.location!;
 
   void takeLoot(LootToken token) {
+    if (token.isArtifact && !canTakeArtifact) {
+      throw ArgumentError('Too many artifacts already taken!');
+    }
     assert(token.location != null);
     token.removeFromBoard();
     loot.add(token);
@@ -51,14 +54,13 @@ class Player {
   bool get hasMasterKey => loot.any((token) => token.isMasterKey);
   bool get inGame => status == PlayerStatus.inGame;
 
-  int get companionsInPlayArea => deck.playArea
-      .fold(0, (sum, card) => sum + (card.type.isCompanion ? 1 : 0));
+  int get companionsInPlayArea =>
+      deck.playArea.countWhere((card) => card.type.isCompanion);
 
   bool get canTakeArtifact {
-    int artifactCount =
-        loot.fold(0, (sum, token) => sum + (token.isArtifact ? 1 : 0));
-    // Allow more artifacts with backpacks.
-    int maxArtifacts = 1;
+    int artifactCount = loot.countWhere((token) => token.isArtifact);
+    int backpackCount = loot.countWhere((token) => token.isBackpack);
+    int maxArtifacts = 1 + backpackCount;
     return artifactCount < maxArtifacts;
   }
 
@@ -88,10 +90,8 @@ class Player {
     return false;
   }
 
-  int countOfCards(CardType cardType) {
-    return deck.allCards
-        .fold(0, (sum, card) => sum + (card.type == cardType ? 1 : 0));
-  }
+  int countOfCards(CardType cardType) =>
+      deck.allCards.where((card) => card.type == cardType).length;
 
   // There must be a shorter way to write this?
   void trashCardOfType(CardType cardType) {
@@ -356,10 +356,9 @@ class ActionExecutor {
 
   void executeAcquireLoot(LootToken token) {
     Player player = turn.player;
-    assert(!token.isArtifact || player.canTakeArtifact);
-    executeAcquireLootEffects(token.loot);
     print('$player loots $token');
     player.takeLoot(token);
+    executeAcquireLootEffects(token.loot);
     if (token.loot.discardImmediately) {
       player.loot.remove(token);
       // Should this get added to Board.usedItems?
@@ -394,15 +393,24 @@ class ActionExecutor {
   void executeTraverse(Traverse action) {
     Edge edge = action.edge;
     if (action.useTeleport) {
+      if (turn.teleports < 1) throw ArgumentError('No teleports to use!');
       turn.teleports -= 1;
-      assert(turn.teleports >= 0);
     } else {
-      assert(!turn.exhausted, 'Not possible to spend boots once exhausted.');
+      if (edge.requiresTeleporter) throw ArgumentError('One way only!');
+      if (edge.requiresKey && !turn.player.hasMasterKey) {
+        throw ArgumentError('Key required!');
+      }
+      if (turn.exhausted) {
+        throw ArgumentError('Not possible to spend boots once exhausted!');
+      }
+      if (edge.bootsCost > turn.boots) {
+        throw ArgumentError('Insufficient boots!');
+      }
       turn.boots -= edge.bootsCost;
-      assert(turn.boots >= 0);
       if (action.spendHealth > 0) {
-        assert(!turn.ignoreMonsters,
-            'Not possible to spend health after ignore monsters!');
+        if (turn.ignoreMonsters) {
+          throw ArgumentError('Cannot spend health after ignore monsters!');
+        }
         board.takeDamage(turn.player, action.spendHealth);
       }
       if (!turn.ignoreMonsters) {
@@ -454,6 +462,14 @@ class ActionExecutor {
     turn.player.deck.add(card);
     executeAcquireCardEffects(card);
     print('${turn.player} acquires $card');
+  }
+
+  void executeMarketBuy(BuyFromMarket action) {
+    Loot itemType = action.item;
+    turn.spendGold(Board.marketGoldCost);
+    var item = board.marketItems.firstWhere((token) => token.loot == itemType);
+    board.marketItems.remove(item);
+    turn.player.loot.add(item);
   }
 
   void executeFight(Fight action) {
@@ -645,6 +661,10 @@ class ActionExecutor {
     }
     if (action is UseItem) {
       executeUseItem(action);
+      return;
+    }
+    if (action is BuyFromMarket) {
+      executeMarketBuy(action);
       return;
     }
 
@@ -925,6 +945,8 @@ class ClankGame {
     for (var idol in monkeyIdols) {
       idol.moveTo(monkeyShrine);
     }
+
+    board.marketItems = allTokens.where((token) => token.isMarketItem).toList();
   }
 
   void setupPlayersAndBoard() {
@@ -1055,6 +1077,8 @@ extension Pile<T> on List<T> {
     }
     return false;
   }
+
+  int countWhere(bool Function(T) test) => where(test).length;
 }
 
 class ArrivalTriggers {
@@ -1094,6 +1118,7 @@ extension PlayerBoard on Board {
 // Intentionally does not know about Player object only PlayerColor.
 class Board {
   static const int playerMaxHealth = 10;
+  static const int marketGoldCost = 7;
   static const int dragonMaxCubeCount = 24;
   static const int playerMaxCubeCount = 30;
   static const int dungeonRowMaxSize = 6;
@@ -1107,6 +1132,7 @@ class Board {
   List<Card> dungeonRow = [];
   late List<Card> dungeonDeck;
   List<LootToken> usedItems = []; // Mostly for accounting.
+  List<LootToken> marketItems = [];
 
   // Should these be private?
   CubeCounts playerCubeStashes = CubeCounts(startWith: playerMaxCubeCount);
@@ -1115,6 +1141,20 @@ class Board {
   DragonBag dragonBag = DragonBag();
 
   Board();
+
+  List<Loot> get availableMarketItemTypes {
+    // Crowns having separate type per point value complicates this
+    // Otherwise it could just be uniqueValues(marketItems.map((i) => i.loot));
+    var backpacks = marketItems.where((item) => item.isBackpack);
+    var keys = marketItems.where((item) => item.isMasterKey);
+    var crowns = marketItems.where((item) => item.isCrown).toList();
+    crowns.sort((a, b) => -a.loot.points.compareTo(b.loot.points));
+    return [
+      if (backpacks.isNotEmpty) backpacks.first.loot,
+      if (keys.isNotEmpty) keys.first.loot,
+      if (crowns.isNotEmpty) crowns.first.loot,
+    ];
+  }
 
   ArrivalTriggers fillDungeonRowFirstTimeReplacingDragons(Random random) {
     assert(dungeonRow.isEmpty);
@@ -1212,8 +1252,7 @@ class Board {
   }
 
   int cubeCountForNormalDragonAttack() {
-    int dungeonRowDangerCount =
-        dungeonRow.fold(0, (sum, card) => sum + (card.type.danger ? 1 : 0));
+    int dungeonRowDangerCount = dungeonRow.where((c) => c.type.danger).length;
     return dragonRageCubeCount + dungeonRowDangerCount;
   }
 
