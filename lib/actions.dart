@@ -35,7 +35,7 @@ class Traverse extends Action {
     assert(!useTeleport || spendHealth == 0);
   }
   @override
-  String toString() => 'moves ${edge.start} to ${edge.end}';
+  String toString() => 'moves $edge';
 }
 
 class AcquireCard extends Action {
@@ -104,18 +104,16 @@ class ReplaceCardInDungeonRow extends Response {
       : super(trigger: trigger) {
     assert(cardType.set == CardSet.dungeon);
   }
+  @override
+  String toString() => 'replaces $cardType in dungeon row ($trigger)';
 }
 
 class TakeEffect extends Response {
   final ImmediateEffect effect;
   TakeEffect({required EffectSource trigger, required this.effect})
       : super(trigger: trigger);
-}
-
-class ChooseFrom extends Response {
-  final List<Action> options;
-  ChooseFrom({required EffectSource trigger, required this.options})
-      : super(trigger: trigger);
+  @override
+  String toString() => 'recieves $effect ($trigger)';
 }
 
 class DiscardCard extends Response {
@@ -126,18 +124,24 @@ class DiscardCard extends Response {
       required this.cardType,
       required this.effect})
       : super(trigger: trigger);
+  @override
+  String toString() => 'discards $cardType ($trigger)';
 }
 
 class TrashACard extends Response {
   final CardType cardType;
   TrashACard({required EffectSource trigger, required this.cardType})
       : super(trigger: trigger);
+  @override
+  String toString() => 'trashes $cardType ($trigger)';
 }
 
 class TakeAdjacentSecret extends Response {
   final Space from;
   TakeAdjacentSecret({required EffectSource trigger, required this.from})
       : super(trigger: trigger);
+  @override
+  String toString() => 'takes secret from $from ($trigger)';
 }
 
 class EndTurn extends Action {

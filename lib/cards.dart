@@ -369,6 +369,20 @@ class Reward extends ImmediateEffect {
     this.clank = 0,
     this.teleports = 0,
   });
+
+  @override
+  String toString() {
+    return [
+      if (boots != 0) 'boots: $boots',
+      if (drawCards != 0) 'drawCards: $drawCards',
+      if (gold != 0) 'gold: $gold',
+      if (hearts != 0) 'hearts: $hearts',
+      if (skill != 0) 'skill: $skill',
+      if (swords != 0) 'swords: $swords',
+      if (clank != 0) 'clank: $clank',
+      if (teleports != 0) 'teleports: $teleports',
+    ].join(' ');
+  }
 }
 
 class TriggerResult {

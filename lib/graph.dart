@@ -25,6 +25,19 @@ class Edge {
 
   // Should this be infinite for requiresTeleporter paths?
   int get bootsCost => 1 + extraBootsCost;
+
+  @override
+  String toString() {
+    return [
+      '$start to $end',
+      if (extraBootsCost != 0) 'extraBoots: $extraBootsCost',
+      if (swordsCost != 0) 'swords: $swordsCost',
+      if (requiresKey) 'locked',
+      if (oneway) 'oneway',
+      if (requiresArtifact) 'requires artifact',
+      if (requiresTeleporter) 'wrong way on oneway',
+    ].join(' ');
+  }
 }
 
 class Token {
