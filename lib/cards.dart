@@ -34,7 +34,7 @@ enum SpecialEffect {
   gainOneSkillPerClankGain,
 }
 
-class EffectSource {}
+abstract class EffectSource {}
 
 class CardType implements EffectSource {
   final String name;

@@ -5,7 +5,7 @@ import 'cards.dart';
 import 'clank.dart';
 import 'graph.dart';
 
-class Action {}
+abstract class Action {}
 
 class PlayCard extends Action {
   final CardType cardType;
@@ -92,7 +92,7 @@ class UseDevice extends Action {
   String toString() => 'uses device $cardType';
 }
 
-class Response extends Action {
+abstract class Response extends Action {
   EffectSource trigger;
   Response({required this.trigger});
 }

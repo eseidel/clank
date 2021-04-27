@@ -40,7 +40,7 @@ class Edge {
   }
 }
 
-class Token {
+abstract class Token {
   Space? location;
 
   void moveTo(Space newLocation) {
