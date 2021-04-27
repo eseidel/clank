@@ -207,22 +207,6 @@ void main() {
     player.deck.hand = box.make('Mister Whiskers', 1);
     plays = generator.possibleCardPlays();
     expect(plays.length, 1); // Even Or types have a single play.
-
-    // player.deck.hand = box.make('Apothecary', 1);
-    // plays = generator.possibleCardPlays();
-    // expect(plays.length, 1); // Only one play when conditions can't be met.
-
-    // player.deck.hand = box.make('Apothecary', 1);
-    // player.deck.hand.addAll(box.make('Burgle', 2));
-    // plays = generator.possibleCardPlays();
-    // expect(plays.length, 5); // 2 burgle + 3 apothecary options
-
-    // player.deck.hand = box.make('Apothecary', 1);
-    // player.deck.hand.addAll(box.make('Burgle', 1));
-    // player.deck.hand.addAll(box.make('Stumble', 1));
-
-    // plays = generator.possibleCardPlays();
-    // expect(plays.length, 8); // 2 burgle + 2 x 3 apothecary options.
   });
 
   test('Buy from Market', () {

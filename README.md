@@ -31,10 +31,15 @@ dart run bin/simulate.dart
   Currently implemented to do nothing.
 * How does Trashing interact with reshuffling?  When does the "choose card" happen?
   For example if you pick a card type and then reshuffle discard (but don't
-  draw the reshuffled card) can you still trash it?  Currently we ignore the "trash".
+  draw the reshuffled card) can you still trash it?
+  Currently we ignore the "trash" if we can't find the card in playarea/discard.
 * Does Gem Collector give refunds (for gems purchased that turn)?
   Currently does not issue refunds.
 * Should Swagger be sensitive to play order (not give skill with -clank)?
   Currently implemented to be sensitive to play order.
 * Monkey Idols are not secrets and thus can't be grabbed by Wand of Wind, right?
   Currently does not allow grabbing Monkey Idols.
+* Is it legal to teleport out of the dungeon w/o an artifact?  Designer says
+  allowed: https://boardgamegeek.com/thread/1671635/article/25115569#25115569
+  but does not specify if artifat is required.
+  Currently we require an artifact to exit the dungeon even via teleport.

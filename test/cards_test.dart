@@ -449,6 +449,20 @@ void main() {
     expect(board.damageTakenBy(player), 1);
     expect(player.deck.hand.length, 2);
     expect(player.deck.discardPile.length, 3);
+
+    // No choices when hand is empty.
+    player.deck.hand = [];
+    addAndPlayCard(game, apothecary.name);
+    expect(ActionGenerator(turn).possibleActionsFromPendingActions().length, 0);
+
+    // But if we draw cards the choice is still available!
+    player.deck.hand = game.box.make('Burgle', 1);
+    expect(ActionGenerator(turn).possibleActionsFromPendingActions().length, 1);
+    executeChoice(game, 0, expectedChoiceCount: 1); // Only burgle to choose.
+    executeChoice(game, 1, expectedChoiceCount: 3); // Choose gold.
+    expect(player.gold, 4); // 2 from before.
+    expect(player.deck.hand, isEmpty);
+    expect(player.deck.discardPile.length, 4); // 3 from before.
   });
 
   test('Sleight of Hand', () {
