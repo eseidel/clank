@@ -311,6 +311,7 @@ void main() {
     executeChoice(game, 1, expectedChoiceCount: 2);
     expect(player.loot.length, 1);
 
+    expect(turn.pendingActions, isEmpty);
     // Artifacts are not secrets and can't be grabbed.
     from = Space.at(0, 0);
     to = Space.at(0, 1, special: Special.majorSecret);
@@ -325,6 +326,7 @@ void main() {
     var possibleActions =
         ActionGenerator(turn).possibleActionsFromPendingActions().toList();
     expect(possibleActions.length, 1); // Take is not an option.
+    turn.pendingActions = []; // Clear the pending choice.
 
     // Monkey Idols are not secrets and can't be grabbed.
     from = Space.at(0, 0);
