@@ -303,7 +303,7 @@ void main() {
     var secret =
         game.box.makeAllLootTokens().firstWhere((loot) => loot.isMajorSecret);
     secret.moveTo(to);
-    builder.connect(from, to, monsters: 2);
+    builder.connect(from, to);
     board.graph = Graph(start: from, allSpaces: [from, to]);
     player.token.moveTo(from);
 
@@ -317,12 +317,27 @@ void main() {
     var artifact =
         game.box.makeAllLootTokens().firstWhere((loot) => loot.isArtifact);
     artifact.moveTo(to);
-    builder.connect(from, to, monsters: 2);
+    builder.connect(from, to);
     board.graph = Graph(start: from, allSpaces: [from, to]);
     player.token.moveTo(from);
 
     addAndPlayCard(game, wandOfWind.name);
     var possibleActions =
+        ActionGenerator(turn).possibleActionsFromPendingActions().toList();
+    expect(possibleActions.length, 1); // Take is not an option.
+
+    // Monkey Idols are not secrets and can't be grabbed.
+    from = Space.at(0, 0);
+    to = Space.at(0, 1, special: Special.majorSecret);
+    var monkeyIdol =
+        game.box.makeAllLootTokens().firstWhere((loot) => loot.isMonkeyIdol);
+    monkeyIdol.moveTo(to);
+    builder.connect(from, to);
+    board.graph = Graph(start: from, allSpaces: [from, to]);
+    player.token.moveTo(from);
+
+    addAndPlayCard(game, wandOfWind.name);
+    possibleActions =
         ActionGenerator(turn).possibleActionsFromPendingActions().toList();
     expect(possibleActions.length, 1); // Take is not an option.
   });
