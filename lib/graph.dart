@@ -6,6 +6,7 @@ class Edge {
   final int extraBootsCost;
   final int swordsCost;
   final bool requiresKey;
+  final bool oneway; // Right way on a one way.
   final bool requiresTeleporter; // Wrong way on a one-way.
   final bool requiresArtifact; // To get back to the start square.
 
@@ -15,6 +16,7 @@ class Edge {
     this.extraBootsCost = 0,
     this.swordsCost = 0,
     this.requiresKey = false,
+    this.oneway = false,
     this.requiresTeleporter = false,
     this.requiresArtifact = false,
   }) {
@@ -133,6 +135,7 @@ class GraphBuilder {
       extraBootsCost: extraBoots,
       swordsCost: monsters,
       requiresKey: requiresKey,
+      oneway: oneway,
     ));
     to.edges.add(Edge(
       start: to,
@@ -232,7 +235,7 @@ class FrontGraphBuilder extends GraphBuilder {
       Space.depths(4, 5, isCrystalCave: true, special: Special.majorSecret),
       Space.depths(4, 6, special: Special.majorSecret),
     ];
-    connect(row[0], row[1]);
+    connect(row[0], row[1], oneway: true);
     connect(row[2], row[3], requiresKey: true);
     connect(row[3], row[4]);
     return row;
@@ -277,6 +280,7 @@ class FrontGraphBuilder extends GraphBuilder {
     connect(first[2], second[2], requiresKey: true);
     connect(first[2], second[3]);
     connect(first[3], second[3], monsters: 1);
+    connect(first[4], second[4], requiresKey: true);
     var third = buildThirdRow();
     connect(second[0], third[0], monsters: 1);
     connect(second[1], third[1], extraBoots: 1);
@@ -291,8 +295,10 @@ class FrontGraphBuilder extends GraphBuilder {
     connect(third[2], fourth[1], extraBoots: 1);
     connect(third[2], fourth[2], monsters: 2);
     connect(third[3], fourth[4], requiresKey: true);
+    connect(third[4], fourth[4]);
     var fifth = buildFifthRow();
-    connect(fourth[0], fifth[0]);
+    connect(fourth[0], fifth[0], monsters: 1, oneway: true);
+    connect(fourth[0], fifth[1]);
     connect(fourth[1], fifth[2], extraBoots: 1, monsters: 1);
     connect(fourth[1], fifth[3]);
     connect(fourth[2], fifth[3]);
@@ -300,7 +306,7 @@ class FrontGraphBuilder extends GraphBuilder {
     connect(fourth[3], fifth[5], monsters: 1);
     connect(fourth[5], fifth[6], requiresKey: true);
     var sixth = buildSixthRow();
-    connect(sixth[0], fifth[0], oneway: true);
+    connect(sixth[0], fifth[0], oneway: true, extraBoots: 1);
     connect(sixth[0], fifth[3], extraBoots: 1);
     connect(sixth[1], fifth[3], monsters: 2);
     connect(sixth[2], fifth[4], requiresKey: true);
